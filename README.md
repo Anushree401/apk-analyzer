@@ -238,31 +238,6 @@ Engine E coordinates continuous platform reinforcement. It initiates an internal
 
 ```
 
----
-
-## 8. Technical References and Sources
-
-[https://sourcegraph.com/blog/cyclomatic-complexity-what-it-is-and-how-to-reduce-it](https://sourcegraph.com/blog/cyclomatic-complexity-what-it-is-and-how-to-reduce-it)
-
-[https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html)
-
-[https://www.mathworks.com/help/bugfinder/ref/numberofrecursions.html](https://www.mathworks.com/help/bugfinder/ref/numberofrecursions.html)
-
-[https://www.vmray.com/malware-obfuscation-techniques/](https://www.vmray.com/malware-obfuscation-techniques/)
-
-[https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0](https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0)
-
-[https://navneet-singh-arora.medium.com/siamese-neural-network-snn-e3ea18cadeb8](https://navneet-singh-arora.medium.com/siamese-neural-network-snn-e3ea18cadeb8)
-
-[https://skylot.github.io/jadx/](https://www.google.com/search?q=https://skylot.github.io/jadx/)
-
-[https://apktool.org/](https://apktool.org/)
-
-[https://developer.android.com/tools/bundletool](https://developer.android.com/tools/bundletool)
-
-[https://www.usenix.org/conference/usenixsecurity18/presentation/yan](https://www.google.com/search?q=https://www.usenix.org/conference/usenixsecurity18/presentation/yan)
-
-[https://www.ndss-symposium.org/ndss2014/programme/drebin-efficient-tools-explainable-detection-android-malware-static-analysis/](https://www.google.com/search?q=https://www.ndss-symposium.org/ndss2014/programme/drebin-efficient-tools-explainable-detection-android-malware-static-analysis/)
 
 ---
 
@@ -330,3 +305,29 @@ The Android app acts as a client while the heavy lifting happens on the backend.
 ### Phase 3: Research Platform (Weeks 11-12+)
 - Prototype advanced research features: Engine D (mutation prediction) and Engine E (adversarial training loop).
 **Result (PAFA v3):** Predictive mutation engine and adversarial self-training loop functionality.
+
+---
+
+## 11. Technical References and Sources
+
+[https://sourcegraph.com/blog/cyclomatic-complexity-what-it-is-and-how-to-reduce-it](https://sourcegraph.com/blog/cyclomatic-complexity-what-it-is-and-how-to-reduce-it)
+
+[https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html)
+
+[https://www.mathworks.com/help/bugfinder/ref/numberofrecursions.html](https://www.mathworks.com/help/bugfinder/ref/numberofrecursions.html)
+
+[https://www.vmray.com/malware-obfuscation-techniques/](https://www.vmray.com/malware-obfuscation-techniques/)
+
+[https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0](https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0)
+
+[https://navneet-singh-arora.medium.com/siamese-neural-network-snn-e3ea18cadeb8](https://navneet-singh-arora.medium.com/siamese-neural-network-snn-e3ea18cadeb8)
+
+[https://skylot.github.io/jadx/](https://www.google.com/search?q=https://skylot.github.io/jadx/)
+
+[https://apktool.org/](https://apktool.org/)
+
+[https://developer.android.com/tools/bundletool](https://developer.android.com/tools/bundletool)
+
+[https://www.usenix.org/conference/usenixsecurity18/presentation/yan](https://www.google.com/search?q=https://www.usenix.org/conference/usenixsecurity18/presentation/yan)
+
+[https://www.ndss-symposium.org/ndss2014/programme/drebin-efficient-tools-explainable-detection-android-malware-static-analysis/](https://www.google.com/search?q=https://www.ndss-symposium.org/ndss2014/programme/drebin-efficient-tools-explainable-detection-android-malware-static-analysis/)
