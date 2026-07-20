@@ -6,6 +6,25 @@
 
 The Predictive Adversarial Fraud Architecture (PAFA) is an automated, self-improving security pipeline designed for banking institutions to detect, interpret, and immunize systems against financial mobile malware (`.apk` / `.aab`). By replacing manual reverse-engineering with parallel forensic engines, topological machine learning, visual identity checking, and a real-time, self-competing **Adversarial AI Warfare Loop**, PAFA predicts dynamic malware mutations and auto-generates platform security patches before threats strike retail or corporate banking clients.
 
+## Stakeholders 
+
+**Primary Stakeholders**:\
+Banks and Financial Institutions\
+Security Operations Center (SOC) Analysts\
+Cybersecurity Teams\
+Malware Reverse Engineers\
+Fraud Detection Teams\
+Mobile Banking Development Teams\
+Incident Response Teams
+
+**Secondary Stakeholders**:\
+FinTech Companies\
+Digital Wallet Providers\
+Managed Security Service Providers (MSSPs)\
+Government Cybersecurity Agencies\
+Security Researchers\
+Universities conducting malware research
+
 ---
 
 ## 2. Core System Features
