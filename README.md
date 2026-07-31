@@ -13,21 +13,30 @@ Our system unifies these defensive layers into a highly responsive Android appli
 
 ## 2. The Three Core Pillars of the Platform
 
-```text
-       ┌──────────────────────────────────────────────────────────────────────┐
-       │     ANDROID PROCESS, PERMISSION, AND VULNERABILITY MANAGER (APVM)    │
-       └──────────────────────────┬───────────────────────────┬───────────────┘
-                                  │                           │
-          ┌───────────────────────┴───────┐           ┌───────┴──────────────────────┐
-          ▼                               ▼                                          ▼
-┌──────────────────────────┐    ┌──────────────────────────┐    ┌───────────────────────────────┐
-│         PILLAR 1         │    │         PILLAR 2         │    │           PILLAR 3            │
-│  ANDROID TASK MANAGER    │    │    PERMISSION AUDITOR    │    │     VULNERABILITY & EXPLOIT   │
-│                          │    │                          │    │      SCANNER (PAFA AI/ML)     │
-│ ├─ View Active Threads   │    │ ├─ Normal Utilities      │    │ ├─ Known CVE & Exploit Scans  │
-│ ├─ Kill Suspicious Apps  │    │ ├─ Dangerous Runtime Priv│    │ ├─ Zero-Day ML Topology Map   │
-│ └─ Hibernate & Sleep     │    │ └─ Hidden & Overlay Flags│    │ └─ Adversarial Robustness Loop│
-└──────────────────────────┘    └──────────────────────────┘    └───────────────────────────────┘
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
+flowchart TD
+    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
+    
+    APVM["ANDROID PROCESS, PERMISSION, AND VULNERABILITY MANAGER (APVM)"]
+    
+    P1["PILLAR 1: ANDROID TASK MANAGER"]
+    P2["PILLAR 2: PERMISSION AUDITOR"]
+    P3["PILLAR 3: VULNERABILITY & EXPLOIT SCANNER"]
+    
+    APVM --> P1 & P2 & P3
+    
+    P1 --> T1["View Active Threads & CPU Telemetry"]
+    P1 --> T2["Kill Suspicious Background Apps"]
+    P1 --> T3["Hibernate & Sleep Idle Targets"]
+    
+    P2 --> A1["Audit Normal System Utilities"]
+    P2 --> A2["Flag Dangerous Runtime Privileges"]
+    P2 --> A3["Inspect Hidden Overlays & Accessibility"]
+    
+    P3 --> V1["Scan Known CVEs & Smali Exploits"]
+    P3 --> V2["Map Zero-Day ML Code Topology (PAFA)"]
+    P3 --> V3["Execute Adversarial Robustness Loop"]
 ```
 
 ### Pillar 1: Active Android Task & Process Manager
@@ -77,32 +86,35 @@ A robust static and AI-powered scanning engine that bridges conventional exploit
 
 Our vulnerability and malware detection is driven by five dedicated intelligence modules inside the backend pipeline:
 
-```text
-       ┌─────────────────────────────────────────────────────────┐
-       │                  UNPACKED APK / AAB DATA                │
-       └────────────────────────────┬────────────────────────────┘
-                                    │
-         ┌──────────────────────────┼──────────────────────────┬─────────────────────────┐
-         ▼                          ▼                          ▼                         ▼
-┌───────────────────┐    ┌────────────────────┐    ┌───────────────────┐    ┌────────────────────┐
-│      ENGINE A     │    │      ENGINE B      │    │      ENGINE C     │    │      ENGINE D      │
-│  Zero-Day ML Map  │    │  Brand & Phishing  │    │ Behavioral Intent │    │  Predictive Aging  │
-│  (Topology/Graphs)│    │ (Siamese/Levensht.)│    │ (Perm ──► C2 Link)│    │  (Sleeper Payloads)│
-└─────────┬─────────┘    └──────────┬─────────┘    └─────────┬─────────┘    └──────────┬─────────┘
-          │                         │                        │                         │
-          └─────────────────────────┼────────────────────────┴─────────────────────────┘
-                                    │
-                                    ▼
-       ┌─────────────────────────────────────────────────────────┐
-       │              COMPOSITE EXPLAINABLE RISK SCORE           │
-       │     Min(10.0, (S_base × W_fin) + A_gen + E_predict)     │
-       └────────────────────────────┬────────────────────────────┘
-                                    │
-                                    ▼
-       ┌─────────────────────────────────────────────────────────┐
-       │       ENGINE E: ADVERSARIAL AI SELF-CORRECTION LOOP     │
-       │         [Attacker LLM Morph] ◄────► [Detector ML]       │
-       └─────────────────────────────────────────────────────────┘
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
+flowchart TD
+    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
+    
+    INPUT["UNPACKED APK & AAB BINARY DATA"]
+    
+    E_A["ENGINE A: Zero-Day ML Map (Topology & Graph Vectors)"]
+    E_B["ENGINE B: Brand & Phishing (Siamese Nets & Levenshtein)"]
+    E_C["ENGINE C: Behavioral Intent (Permission to C2 Outbound Link)"]
+    E_D["ENGINE D: Predictive Aging (Dormant Sleeper Payloads)"]
+    
+    INPUT --> E_A & E_B & E_C & E_D
+    
+    SCORE["COMPOSITE EXPLAINABLE RISK SCORE: Min(10.0, S_base x W_fin + A_gen + E_predict)"]
+    
+    E_A --> SCORE
+    E_B --> SCORE
+    E_C --> SCORE
+    E_D --> SCORE
+    
+    SCORE --> E_E_HEADER["ENGINE E: ADVERSARIAL AI SELF-CORRECTION LOOP"]
+    
+    ATTACKER["Attacker LLM Agent (Code Morphing & Obfuscation)"]
+    DEFENDER["Defender ML Agent (Closed-Loop Retraining & Detection)"]
+    
+    E_E_HEADER --> ATTACKER & DEFENDER
+    ATTACKER -->|"Generate Mutated Bytecode"| DEFENDER
+    DEFENDER -->|"Log Bypasses & Retrain Model"| ATTACKER
 ```
 
 ### Engine A: Zero-Day ML Structural Engine
@@ -140,33 +152,30 @@ An automated self-correction loop where an **Attacker LLM Agent** repeatedly mod
 
 ## 6. System Architecture & Tech Stack
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│                    ANDROID APP CLIENT                      │
-│        (Kotlin, Jetpack Compose, Material Design 3)         │
-│  [ Task Manager UI ]  [ Permission Auditor ]  [ Scan View ] │
-└─────────────────────────────┬──────────────────────────────┘
-                              │ REST API / JSON
-                              ▼
-┌────────────────────────────────────────────────────────────┐
-│                    FASTAPI BACKEND ENGINE                  │
-│  Endpoints: /api/upload | /api/analyze | /api/report       │
-│                                                            │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         Forensic Recon & Parsing Pipeline            │  │
-│  │     (Bundletool, JADX, Apktool, Androguard, AST)     │  │
-│  └──────────────────────────┬───────────────────────────┘  │
-│                             ▼                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │           AI / ML Cognition & Exploit Suite           │  │
-│  │ (Scikit-Learn, NetworkX, Siamese Nets, Gemini/OpenAI)│  │
-│  └──────────────────────────┬───────────────────────────┘  │
-│                             ▼                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Persistence & SIEM Exports              │  │
-│  │     (PostgreSQL/SQLite, Splunk Rules, JSON Reports)  │  │
-│  └──────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────┘
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
+flowchart TD
+    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
+    
+    CLIENT["ANDROID APP CLIENT (Kotlin, Jetpack Compose, Material Design 3)"]
+    
+    C1["Task Manager UI"]
+    C2["Permission Auditor"]
+    C3["Vulnerability Scanner"]
+    
+    CLIENT --> C1 & C2 & C3
+    
+    C1 & C2 & C3 -->|"REST API & JSON Telemetry"| API["FASTAPI BACKEND ENGINE (/api/upload, /api/analyze, /api/report)"]
+    
+    subgraph PIPELINE ["BACKEND AI & FORENSIC PROCESSING PIPELINE"]
+        RECON["Forensic Recon & Parsing (Bundletool, JADX, Apktool, Androguard, AST)"]
+        AI_SUITE["AI & ML Exploit Suite (Scikit-Learn, NetworkX, Siamese Nets, Gemini/OpenAI)"]
+        PERSIST["Persistence & SIEM Exports (PostgreSQL, SQLite, Splunk Rules, JSON Reports)"]
+    end
+    
+    API --> RECON --> AI_SUITE --> PERSIST
+    
+    style PIPELINE fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff
 ```
 
 * **Frontend (Android Client):** Built with Kotlin and Jetpack Compose. Offers smooth UX for monitoring device memory, reviewing installed app permissions, initiating deep vulnerability scans, and visualizing interactive node-edge attack graphs.
