@@ -1,14 +1,16 @@
-| Week | Goal                                                             |
-| ---- | ---------------------------------------------------------------- |
-| 1    | Android app foundation + backend connection                      |
-| 2    | APK upload, decompilation, manifest parsing                      |
-| 3    | Static analysis (permissions, components, strings, URLs)         |
-| 4    | Risk scoring engine (first version)                              |
-| 5    | AI explanations and interactive reports                          |
-| 6    | Attack graph visualization                                       |
-| 7    | Engine A (structural ML classifier)                              |
-| 8    | Engine B (brand impersonation detection)                         |
-| 9    | Engine C (behavior correlation engine)                           |
-| 10   | Engine D (predictive mutation analysis)                          |
-| 11   | Engine E (adversarial attacker vs. defender prototype)           |
-| 12   | Performance optimization, testing, documentation, and deployment |
+# APVM + PAFA Implementation & Research Milestones (12-Week Roadmap)
+
+| Week | Core Focus Area | Development Deliverable | Research & Documentation Output |
+| :---: | :--- | :--- | :--- |
+| **1** | **Task & Process Manager** | Jetpack Compose app foundation, navigation setup, active CPU & RAM usage telemetry (`UsageStatsManager`). | Introduction & System Architecture definition for mobile runtime process surveillance. |
+| **2** | **Runtime Process Control** | Process control actions: one-click Kill, Sleep, and Hibernate functions via Accessibility Service and Shizuku integration. | Analysis of Android background execution states, wakelocks, and resource drain mitigation. |
+| **3** | **Permission Auditor** | Manifest extraction (`AndroidManifest.xml`), categorizing Normal and Dangerous runtime permissions across installed apps & APKs. | Research classification of standard vs. privacy-invasive operational boundaries in Android OS. |
+| **4** | **Hidden Privilege Inspector** | High-threat permission flagger for special system overrides (`SYSTEM_ALERT_WINDOW`, `BIND_ACCESSIBILITY_SERVICE`). | Study on banking trojans utilizing overlay attacks and keystroke logging via accessibility abuse. |
+| **5** | **Exploit & CVE Scanner** | FastAPI backend connection with automated JADX & Apktool decompilation; scanning for exported component vulnerabilities. | Methodology for static evaluation of insecure broadcast receivers and exported content providers. |
+| **6** | **Exploit Logic Verification** | Scanning Smali ASTs for WebView JavascriptInterface flaws, SQL injection vectors, and known signature bypass CVEs (Janus/StrandHogg). | Benchmarking exploit detection rate against standardized vulnerable Android testbeds (e.g., DIVA/Androgoat). |
+| **7** | **PAFA Engine A (Structural ML)** | Implementation of Random Forest topological structural classifier using cyclomatic complexity & instruction branching ratios. | Machine learning models for zero-day static threat scoring independent of hash signatures. |
+| **8** | **PAFA Engine B (Anti-Phishing)**| Siamese Neural Network app icon similarity evaluation and Levenshtein string distance matching against institutional banking brands. | Computer vision and typographical distance algorithms in combating visual interface masquerades. |
+| **9** | **PAFA Engine C (Behavior Matrix)**| Connecting isolated permission requests to method execution chains and outbound command-and-control (C2) network tracking. | Evidence fusion & explainable behavioral correlation across permission-to-exfiltration paths. |
+| **10** | **PAFA Engine D (Sleeper Risk)** | Hazard regression forecasting model to evaluate latent dynamic class loading (`DexClassLoader`) and dormant background timers. | Predictive aging models and statistical forecasting for polymorphic or delayed-activation malware. |
+| **11** | **PAFA Engine E (Adversarial AI)** | Prototype closed-circuit loop pairing an Attacker LLM (code morphing/obfuscation) against the Detector ML retraining engine. | Evaluating model resilience and automated signature generation against evasive mutations. |
+| **12** | **Deployment & Polish** | Finalizing interactive Node-Edge Attack Graph rendering, PDF/JSON forensic report generators, and full application benchmarking. | Discussion, limitations, future work, and compilation of final thesis / academic research publication. |
