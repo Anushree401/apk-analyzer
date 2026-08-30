@@ -1,213 +1,964 @@
 # ANDROID PROCESS, PERMISSION, AND VULNERABILITY MANAGER (APVM)
-### Powered by the Predictive Adversarial Fraud Architecture (PAFA) for Advanced Malware & Exploit Detection
-
----
 
 ## 1. Project Overview & Executive Summary
 
-The **Android Process, Permission, and Vulnerability Manager (APVM)** is an all-in-one mobile cybersecurity suite and predictive threat detection platform. Traditional mobile security requires users and security teams to rely on disparate, fragmented tools: simple task killers that blind-stop system threads, basic permission viewers with zero contextual analysis, and reactive antivirus scanners that only flag documented hash signatures. 
+The **Android Process, Permission, and Vulnerability Manager (APVM)** is an Android cybersecurity application designed to provide a centralized platform for monitoring application processes, auditing application permissions, and identifying security vulnerabilities in Android applications.
 
-Our system unifies these defensive layers into a highly responsive Android application paired with a deep inspection backend. By combining **Runtime Task Management**, **Deep Permission Auditing**, and **Known CVE Vulnerability Scanning** with our revolutionary **Predictive Adversarial Fraud Architecture (PAFA)**, the platform not only manages active system resources and audits privilege abuse, but also detects zero-day mobile malware (`.apk` / `.aab`), banking trojans, disguised phishing overlays, and dynamic runtime mutations before exploitation occurs.
+Traditional Android security utilities often provide isolated functionality such as viewing application permissions, monitoring running applications, or performing APK analysis. APVM combines these capabilities into a single security-oriented platform.
+
+The system provides seven major modules:
+
+1. Security Dashboard
+2. Android Process Manager
+3. Permission Auditor
+4. APK Security & Vulnerability Scanner
+5. Security Risk Assessment
+6. Security Report & Explanation
+7. Scan History
+
+The platform analyzes installed applications and user-selected APK files, identifies potentially risky permissions and insecure application configurations, evaluates detected security findings, and presents the results through understandable security reports.
+
+APVM focuses primarily on **Android application security assessment, process monitoring, permission auditing, and static APK vulnerability analysis**.
 
 ---
 
-## 2. The Three Core Pillars of the Platform
+# 2. Core Objectives
+
+The primary objectives of APVM are:
+
+- Provide a centralized security dashboard for Android applications.
+- Monitor currently running application processes.
+- Provide supported process-management capabilities.
+- Audit permissions requested by installed applications.
+- Identify dangerous and special-access permissions.
+- Analyze APK files for insecure configurations and known vulnerability patterns.
+- Identify exposed Android application components.
+- Assign an overall security risk level.
+- Explain security findings in an understandable manner.
+- Maintain a history of previous APK security scans.
+
+---
+
+# 3. System Architecture
+
+The system is divided into an Android client and an analysis backend.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
 flowchart TD
-    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
-    
-    APVM["ANDROID PROCESS, PERMISSION, AND VULNERABILITY MANAGER (APVM)"]
-    
-    P1["PILLAR 1: ANDROID TASK MANAGER"]
-    P2["PILLAR 2: PERMISSION AUDITOR"]
-    P3["PILLAR 3: VULNERABILITY & EXPLOIT SCANNER"]
-    
-    APVM --> P1 & P2 & P3
-    
-    P1 --> T1["View Active Threads & CPU Telemetry"]
-    P1 --> T2["Kill Suspicious Background Apps"]
-    P1 --> T3["Hibernate & Sleep Idle Targets"]
-    
-    P2 --> A1["Audit Normal System Utilities"]
-    P2 --> A2["Flag Dangerous Runtime Privileges"]
-    P2 --> A3["Inspect Hidden Overlays & Accessibility"]
-    
-    P3 --> V1["Scan Known CVEs & Smali Exploits"]
-    P3 --> V2["Map Zero-Day ML Code Topology (PAFA)"]
-    P3 --> V3["Execute Adversarial Robustness Loop"]
+    U[User] --> A[Android Application]
+
+    A --> D[Security Dashboard]
+    A --> P[Process Manager]
+    A --> R[Permission Auditor]
+    A --> S[APK Scanner]
+
+    P --> API[Backend API]
+    R --> API
+    S --> API
+
+    API --> AN[Analysis Engine]
+    AN --> RA[Risk Assessment]
+    RA --> RP[Report Generator]
+    RP --> DB[(Scan History)]
 ```
 
-### Pillar 1: Active Android Task & Process Manager
-A comprehensive runtime monitor designed to give users, incident responders, and analysts total control over active device execution:
-* **View & Inspect Processes:** Monitors real-time memory (RAM) allocation, CPU load percentages, foreground activities, background persistent services, and wakelock triggers using `UsageStatsManager` and system process inspection.
-* **Kill Suspicious Threads:** Instantly terminates unverified background tasks, unauthorized cryptominers, or silent data exfiltration services using automated root, Shizuku, or native Accessibility Service hooks.
-* **Sleep & Hibernate:** Freezes dormant applications and prevents unauthorized wake timers from restarting background telemetry services, preserving device battery and reducing attack surface.
-
-### Pillar 2: Universal Permission & Privilege Auditor
-An advanced configuration auditor that scans all installed applications and standalone uploaded `.apk` / `.aab` packages to categorize privilege levels and expose silent security gaps:
-* **Normal Permissions:** Audits standard utilities (e.g., `INTERNET`, `VIBRATE`, `FLASHLIGHT`) to ensure standard operational compliance.
-* **Dangerous (Runtime) Permissions:** Highlights privacy-invasive privileges that grant access to personal identity and communication lines (e.g., `READ_SMS`, `READ_CALL_LOG`, `RECORD_AUDIO`, `ACCESS_FINE_LOCATION`, `READ_CONTACTS`).
-* **Hidden & Special Permissions (High Threat):** Uncovers undocumented custom signature declarations and critical system override permissions frequently abused by banking malware and ransomware, including:
-  * `SYSTEM_ALERT_WINDOW`: Screen overlay privilege used to superimpose invisible phishing forms over genuine banking applications.
-  * `BIND_ACCESSIBILITY_SERVICE`: Abused by malware to intercept keystrokes, read screen contents (2FA/OTP interception), and perform autonomous clicks.
-  * `REQUEST_INSTALL_PACKAGES`: Used by droppers to silently stage and execute secondary malicious payloads without user consent.
-
-### Pillar 3: Security & Vulnerability Scanner (Malware & Known Exploit Detection)
-A robust static and AI-powered scanning engine that bridges conventional exploit checks with deep machine learning intelligence:
-* **Known Exploit & CVE Scanning:** Decompiles app binaries (using JADX, Apktool, and Bundletool) to examine Smali bytecode and manifest setups for critical weaknesses:
-  * **Insecure Exported Components:** Flags unprotected `BroadcastReceivers`, `Activities`, and `Services` accessible by third-party malicious apps.
-  * **ContentProvider Leakage:** Identifies unencrypted database providers vulnerable to local SQL injection or unauthorized file extraction.
-  * **WebView Exploitation:** Detects insecure `addJavascriptInterface()` bindings and unverified local file execution within web wrappers.
-  * **Known Vulnerability Profiles:** Evaluates packages against legacy and modern vulnerability patterns (e.g., Janus APK signature bypass, StrandHogg task hijacking vectors).
-* **PAFA Multi-Engine Zero-Day Detection:** Routes analyzed code structures through five cognitive machine learning and AI analysis engines to catch unknown, obfuscated, or mutating malware strains without relying on signature databases.
+The Android application provides the user interface and device-level information, while the backend performs computationally intensive APK analysis and security evaluation where required.
 
 ---
 
-## 3. Stakeholders
+# 4. Security Dashboard
 
-**Primary Stakeholders:**
-* Android Device Users & Enterprise Fleet Managers
-* Banking and Financial Security Operations (SOC Analysts)
-* Malware Reverse Engineers & Forensic Analysts
-* Mobile Application Security & Fraud Detection Teams
-* Incident Response (IR) Cyber Units
+The **Security Dashboard** is the central interface of APVM. It provides a high-level overview of the security state of applications and previously performed analyses.
 
-**Secondary Stakeholders:**
-* FinTech Companies & Digital Wallet Providers
-* Managed Security Service Providers (MSSPs)
-* University Researchers and Academic Cybersecurity Labs
-* Government & Regulatory Compliance Auditors
+## Features
 
----
+- Display the overall device security overview.
+- Display the number of installed applications.
+- Display the number of currently running processes.
+- Display applications using dangerous permissions.
+- Display applications using special or potentially suspicious permissions.
+- Display the number of detected APK vulnerabilities.
+- Display the overall security status.
+- Display the overall risk summary.
+- Provide quick access to:
+  - Android Process Manager
+  - Permission Auditor
+  - APK Security Scanner
+  - Security Reports
+  - Scan History
+- Highlight applications requiring further security investigation.
 
-## 4. The Intelligence Backbone: PAFA AI & Forensic Engines
-
-Our vulnerability and malware detection is driven by five dedicated intelligence modules inside the backend pipeline:
+## Dashboard Flow
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
 flowchart TD
-    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
-    
-    INPUT["UNPACKED APK & AAB BINARY DATA"]
-    
-    E_A["ENGINE A: Zero-Day ML Map (Topology & Graph Vectors)"]
-    E_B["ENGINE B: Brand & Phishing (Siamese Nets & Levenshtein)"]
-    E_C["ENGINE C: Behavioral Intent (Permission to C2 Outbound Link)"]
-    E_D["ENGINE D: Predictive Aging (Dormant Sleeper Payloads)"]
-    
-    INPUT --> E_A & E_B & E_C & E_D
-    
-    SCORE["COMPOSITE EXPLAINABLE RISK SCORE: Min(10.0, S_base x W_fin + A_gen + E_predict)"]
-    
-    E_A --> SCORE
-    E_B --> SCORE
-    E_C --> SCORE
-    E_D --> SCORE
-    
-    SCORE --> E_E_HEADER["ENGINE E: ADVERSARIAL AI SELF-CORRECTION LOOP"]
-    
-    ATTACKER["Attacker LLM Agent (Code Morphing & Obfuscation)"]
-    DEFENDER["Defender ML Agent (Closed-Loop Retraining & Detection)"]
-    
-    E_E_HEADER --> ATTACKER & DEFENDER
-    ATTACKER -->|"Generate Mutated Bytecode"| DEFENDER
-    DEFENDER -->|"Log Bypasses & Retrain Model"| ATTACKER
+    A[Open Dashboard] --> B[Collect Security Data]
+
+    B --> C[Installed Apps]
+    B --> D[Running Processes]
+    B --> E[Permission Findings]
+    B --> F[Vulnerability Findings]
+
+    C --> G[Security Summary]
+    D --> G
+    E --> G
+    F --> G
+
+    G --> H[Display Dashboard]
 ```
 
-### Engine A: Zero-Day ML Structural Engine
-Translates compiled Java structures and Smali assemblies into an abstract Control Flow Graph (CFG). It measures cyclomatic complexity, call branching ratios, entropy levels, and dynamic reflection proxies. A Random Forest ensemble model classifies behavioral structural anomalies regardless of superficial obfuscation.
-
-### Engine B: Brand Identity & Impersonation Matcher
-Defends against cosmetic masquerades and visual UI clones. Extracts package drawables and routes them through a shared-weight Siamese Neural Network to measure icon visual similarity against financial institution reference databases, while Levenshtein distance formulas catch deceptive package identifier typography (e.g., `com.bankof1ndia.mobile`).
-
-### Engine C: Behavioral Intent Correlation Matrix
-Eliminates false positives by connecting isolated permission declarations directly to compiled runtime code paths. It audits a strict three-step threat chain:
-1. Confirming the requested privilege (e.g., `READ_SMS`).
-2. Tracing methods that manipulate high-risk target strings (`"OTP"`, `"Balance"`, `"Password"`).
-3. Verifying if captured payloads are piped into outbound Network Socket / HTTP transmitters communicating with unverified Command & Control (C2) domains.
-
-### Engine D: Time-Variant Predictive Aging Model
-Identifies dormant "sleeper" vulnerabilities designed to evade initial sandbox analysis. It scans for latent Dynamic Class Loading (DCL) architectures (`DexClassLoader`), runtime DEX extraction hooks, and delayed event loops, running hazard regression models to estimate the probability of functional mutation over a 30-day window.
-
-### Engine E: Automated Adversarial AI Warfare Loop
-An automated self-correction loop where an **Attacker LLM Agent** repeatedly modifies decompiled code structures (altering variable structures, abstract tree paths, and packing layers) to craft evasive variants. A **Defender ML Agent** attempts to detect these mutations, immediately logging and incorporating bypassed variants into its retraining dataset to seal detection blind spots autonomously.
-
 ---
 
-## 5. Traditional Security Tools vs. Our Integrated Suite
+# 5. Android Process Manager
 
-| Security Layer | Traditional Android Tools (Task Killers, Basic Scanners) | Our Integrated Suite (Task + Permission + Vulnerability + PAFA AI) |
-| :--- | :--- | :--- |
-| **Process Control** | Blindly kills foreground apps without memory or behavior context. | Monitors wake-locks, thread telemetry, and stops persistent malware threads via Shizuku/Accessibility. |
-| **Permission Auditing** | Displays flat strings without distinguishing hidden or overlay risks. | Categorizes Normal, Dangerous, and Special/Hidden flags (Accessibility, Overlays) with vulnerability warnings. |
-| **Exploit Scanning** | Relies entirely on outdated antivirus hash signatures (MD5/SHA256). | Analyzes decompiled Smali/Manifest setups for CVEs (Janus, StrandHogg, exported components). |
-| **Zero-Day Resilience** | Completely blind to unpublished or newly compiled malware strains. | Evaluates code geometry and graph complexity to catch unknown variants instantly. |
-| **Phishing Defense** | Ignores cloned icons or UI wrappers if the package signature differs. | Employs Siamese neural networks to identify visual branding cloning and icon spoofing. |
-| **Analyst Reporting** | Spits out binary "Clean" or "Infected" alerts with zero explanation. | Generates explainable contributing factor breakdowns, interactive attack graphs, and exact mitigation rules. |
+The **Android Process Manager** provides information about currently running application processes and provides supported process-management operations.
 
----
+The module is intended to provide visibility into application activity while respecting Android's security and process-isolation restrictions.
 
-## 6. System Architecture & Tech Stack
+## Process Monitoring
+
+The module can:
+
+- View currently running processes.
+- Display process/application name.
+- Display Process ID (PID), where available.
+- Display process status.
+- Display available CPU information.
+- Display available memory/resource information.
+- Identify the application associated with a process.
+- Refresh the process list.
+- Display basic process activity information.
+
+## Process Management
+
+Where supported by the Android version and available privileges, the module can:
+
+- Select a process/application.
+- Terminate supported processes.
+- Put supported applications into a sleep state.
+- Hibernate supported applications/processes.
+- Identify applications with persistent background activity.
+
+Operations requiring elevated privileges will only be available where the device configuration supports them.
+
+## Process Manager Flow
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'background': '#000000', 'primaryColor': '#000000', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#ffffff', 'lineColor': '#ffffff', 'textColor': '#ffffff', 'clusterBkg': '#000000', 'clusterBorder': '#ffffff' }}}%%
 flowchart TD
-    classDef default fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff;
-    
-    CLIENT["ANDROID APP CLIENT (Kotlin, Jetpack Compose, Material Design 3)"]
-    
-    C1["Task Manager UI"]
-    C2["Permission Auditor"]
-    C3["Vulnerability Scanner"]
-    
-    CLIENT --> C1 & C2 & C3
-    
-    C1 & C2 & C3 -->|"REST API & JSON Telemetry"| API["FASTAPI BACKEND ENGINE (/api/upload, /api/analyze, /api/report)"]
-    
-    subgraph PIPELINE ["BACKEND AI & FORENSIC PROCESSING PIPELINE"]
-        RECON["Forensic Recon & Parsing (Bundletool, JADX, Apktool, Androguard, AST)"]
-        AI_SUITE["AI & ML Exploit Suite (Scikit-Learn, NetworkX, Siamese Nets, Gemini/OpenAI)"]
-        PERSIST["Persistence & SIEM Exports (PostgreSQL, SQLite, Splunk Rules, JSON Reports)"]
-    end
-    
-    API --> RECON --> AI_SUITE --> PERSIST
-    
-    style PIPELINE fill:#000000,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    A[Process Manager] --> B[Get Running Apps]
+
+    B --> C[Process List]
+    C --> D[Process Details]
+
+    D --> E{Select Action}
+
+    E --> F[Refresh]
+    E --> G[Kill]
+    E --> H[Sleep]
+    E --> I[Hibernate]
+
+    F --> C
+    G --> J[Update Status]
+    H --> J
+    I --> J
 ```
 
-* **Frontend (Android Client):** Built with Kotlin and Jetpack Compose. Offers smooth UX for monitoring device memory, reviewing installed app permissions, initiating deep vulnerability scans, and visualizing interactive node-edge attack graphs.
-* **Backend Pipeline:** Powered by Python FastAPI for rapid asynchronous processing.
-* **Decompilation & Forensics:** Incorporates `JADX`, `Apktool`, and `Bundletool` for deep unpacking, paired with `Androguard` and `APKInspector` for AST parsing and Smali static evaluation.
-* **Machine Learning & AI:** Uses `Scikit-Learn` (Random Forest, decision trees), `NetworkX` (attack path mapping and graph metrics), PyTorch (Siamese Networks for image comparison), and Large Language Model (Gemini/OpenAI) integration for explainable threat narration and automated remediation script generation.
-* **Database:** SQLite for local modular prototyping, structured for seamless production scaling to PostgreSQL to log historical analyses, threat metrics, and audit records.
+---
+
+# 6. Permission Auditor
+
+The **Permission Auditor** analyzes permissions requested by installed Android applications and categorizes them according to their potential security impact.
+
+The purpose of the module is to provide contextual permission analysis rather than simply displaying a list of permission names.
+
+## Permission Discovery
+
+The module can:
+
+- List permissions requested by installed applications.
+- Group permissions by application.
+- Display permission names.
+- Display permission descriptions where available.
+- Display the permission category or protection level.
+- Identify permissions requiring special access.
+
+## Permission Classification
+
+Permissions can be classified into:
+
+- Normal permissions
+- Dangerous permissions
+- Special-access permissions
+- Other sensitive or less-obvious permissions
+
+Examples include:
+
+```text
+READ_SMS
+READ_CALL_LOG
+RECORD_AUDIO
+ACCESS_FINE_LOCATION
+READ_CONTACTS
+SYSTEM_ALERT_WINDOW
+REQUEST_INSTALL_PACKAGES
+```
+
+## Permission Risk Analysis
+
+The module can:
+
+- Detect applications requesting multiple sensitive permissions.
+- Identify potentially excessive permission usage.
+- Identify special-access permissions.
+- Highlight potentially risky permission combinations.
+- Compare requested permissions with application functionality where sufficient information is available.
+- Explain why a flagged permission may represent a security concern.
+
+A permission alone does not prove that an application is malicious. The permission findings are treated as security indicators that contribute to the overall risk assessment.
+
+## Permission Auditor Flow
+
+```mermaid
+flowchart TD
+    A[Permission Auditor] --> B[Get Installed Apps]
+
+    B --> C[Read Permissions]
+    C --> D[Classify Permissions]
+
+    D --> E[Normal]
+    D --> F[Dangerous]
+    D --> G[Special / Sensitive]
+
+    E --> H[Permission Findings]
+    F --> H
+    G --> H
+
+    H --> I[Risk Indicators]
+```
 
 ---
 
-## 7. Implementation Roadmap & Milestones
+# 7. APK Security & Vulnerability Scanner
 
-| Phase / Weeks | Target Module | Key Deliverables & Technical Milestones |
-| :--- | :--- | :--- |
-| **Phase 1: Weeks 1–2** | **Task & Process Manager** | Jetpack Compose app foundation. Real-time CPU/RAM monitor using `UsageStatsManager`. Process execution control (Kill / Sleep / Hibernate) via Accessibility & Shizuku hooks. |
-| **Phase 2: Weeks 3–4** | **Permission Auditor & Parser** | Manifest extraction (`AndroidManifest.xml`). Categorization of Normal, Dangerous, and Hidden/Special privileges (`SYSTEM_ALERT_WINDOW`, `ACCESSIBILITY_SERVICE`). UI auditing screens. |
-| **Phase 3: Weeks 5–6** | **Known Exploit Scanner** | Backend integration of JADX and Apktool. Automated CVE scanning for exported BroadcastReceivers, insecure ContentProviders, JavascriptInterface flaws, and WebView vulnerabilities. |
-| **Phase 4: Weeks 7–8** | **PAFA Engine A & B (ML + Brand)** | Implementation of Random Forest topological classifier (Engine A) and Siamese Neural Network icon/string similarity matcher (Engine B) for anti-phishing defense. |
-| **Phase 5: Weeks 9–10** | **PAFA Engine C & D (Behavior + Sleeper)** | Behavioral intent mapping (Permission $\rightarrow$ API $\rightarrow$ Network C2 correlation) and hazard regression modeling for predictive dormant code detection. |
-| **Phase 6: Weeks 11–12**| **Adversarial Loop & Polish** | Prototype of Engine E (Attacker vs. Defender automated training loop), interactive Attack Graph rendering, report export generation (PDF/JSON/SIEM), and production testing. |
+The **APK Security & Vulnerability Scanner** performs static security analysis on user-selected APK files.
+
+The scanner examines APK metadata, the Android manifest, application components, permissions, and code/resources for known security weaknesses and vulnerable configurations.
+
+## APK Input
+
+The scanner supports:
+
+- APK file selection/import.
+- APK metadata extraction.
+- Package name identification.
+- Application version identification.
+- APK structure inspection.
+
+## AndroidManifest.xml Analysis
+
+The scanner analyzes:
+
+- Requested permissions.
+- Activities.
+- Services.
+- Broadcast receivers.
+- Content providers.
+- Exported components.
+- Component protection settings.
+- Application configuration.
+
+## Component Security Analysis
+
+The scanner checks for potentially unsafe configurations involving:
+
+### Activities
+
+- Unnecessarily exported activities.
+- Missing or weak protection mechanisms.
+
+### Services
+
+- Exported services without appropriate protection.
+- Potentially unsafe service configurations.
+
+### Broadcast Receivers
+
+- Exported receivers.
+- Receivers lacking suitable permission restrictions.
+
+### Content Providers
+
+- Exported providers.
+- Potential unauthorized access.
+- Potential data exposure.
+
+## Static Code Analysis
+
+The scanner may inspect application code and resources for known security issues such as:
+
+- Unsafe WebView configurations.
+- Insecure JavaScript interfaces.
+- Unsafe local file access.
+- Hardcoded sensitive information where detectable.
+- Insecure coding/configuration patterns.
+- Other predefined Android security rules.
+
+## Vulnerability Classification
+
+Detected findings can be categorized as:
+
+```text
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+Each finding should contain:
+
+- Finding name.
+- Severity.
+- Affected component.
+- Description.
+- Evidence.
+- Security impact.
+- Recommended mitigation.
+
+## APK Scanner Flow
+
+```mermaid
+flowchart TD
+    A[Select APK] --> B[Extract APK]
+
+    B --> C[Metadata]
+    B --> D[Manifest]
+    B --> E[DEX / Code]
+    B --> F[Resources]
+
+    D --> G[Component Analysis]
+    E --> H[Static Code Analysis]
+    F --> H
+
+    G --> I[Security Rules]
+    H --> I
+
+    I --> J[Vulnerability Findings]
+```
 
 ---
 
-## 8. Technical References & Academic Sources
+# 8. Security Risk Assessment
 
-1. **Cyclomatic Complexity in Architectural Code Evaluation:** [Sourcegraph Engineering Blog](https://sourcegraph.com/blog/cyclomatic-complexity-what-it-is-and-how-to-reduce-it)
-2. **Java Virtual Machine Specification & Smali Bytecode:** [Oracle JVM Specs](https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html)
-3. **Malware Obfuscation & Evasion Techniques:** [VMRay Research](https://www.vmray.com/malware-obfuscation-techniques/)
-4. **Levenshtein Distance Equations in Typographical Phishing:** [Understanding Levenshtein Distance](https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0)
-5. **Siamese Neural Networks for Visual Identity Similarity:** [SNN Architecture Overview](https://navneet-singh-arora.medium.com/siamese-neural-network-snn-e3ea18cadeb8)
-6. **JADX - Dex to Java Decompiler:** [JADX Repository & Docs](https://skylot.github.io/jadx/)
-7. **Apktool - Reverse Engineering Android APKs:** [Apktool Official Documentation](https://apktool.org/)
-8. **Android Bundletool and AAB Merging:** [Android Developers Tech Docs](https://developer.android.com/tools/bundletool)
-9. **Explainable Static Analysis for Android Malware Detection:** [NDSS Symposium - Drebin Paper](https://www.ndss-symposium.org/ndss2014/programme/drebin-efficient-tools-explainable-detection-android-malware-static-analysis/)
-10. **Android Application Sandbox and Permission Architecture:** [USENIX Security Archive](https://www.usenix.org/conference/usenixsecurity18/presentation/yan)
+The **Security Risk Assessment** combines findings from the Permission Auditor and APK Security & Vulnerability Scanner to determine the overall security risk of an application or APK.
+
+## Risk Factors
+
+The assessment can consider:
+
+- Number of sensitive permissions.
+- Dangerous permissions.
+- Special-access permissions.
+- Potentially excessive permission combinations.
+- Number of detected vulnerabilities.
+- Vulnerability severity.
+- Exported application components.
+- Insecure configurations.
+- Other static-analysis findings.
+
+## Risk Levels
+
+The system can categorize results into:
+
+```text
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+## Risk Assessment Functions
+
+- Generate an overall risk level.
+- Calculate a risk score.
+- Identify applications requiring attention.
+- Prioritize high-severity findings.
+- Display the factors contributing to the risk.
+- Associate individual findings with their risk contribution.
+- Distinguish informational findings from serious vulnerabilities.
+
+## Risk Assessment Flow
+
+```mermaid
+flowchart TD
+    A[Security Findings] --> B[Permission Risk]
+    A --> C[Vulnerability Risk]
+    A --> D[Component Exposure]
+
+    B --> E[Risk Engine]
+    C --> E
+    D --> E
+
+    E --> F[Risk Score]
+    F --> G[Risk Level]
+
+    G --> H[Low / Medium / High / Critical]
+```
+
+---
+
+# 9. Security Report & Explanation
+
+The **Security Report & Explanation** module converts technical security findings into an understandable report.
+
+Instead of simply displaying a security score, APVM explains the findings and their potential impact.
+
+## Report Information
+
+### Application Information
+
+- Application name.
+- Package name.
+- Version.
+- APK information.
+- Scan date and time.
+
+### Permission Findings
+
+- Requested permissions.
+- Dangerous permissions.
+- Special permissions.
+- Potentially excessive permissions.
+- Permission-related explanations.
+
+### Vulnerability Findings
+
+- Vulnerability name.
+- Affected component.
+- Severity.
+- Evidence.
+- Security impact.
+- Recommended mitigation.
+
+### Risk Summary
+
+- Overall risk score.
+- Overall risk level.
+- Major contributing factors.
+- High-priority findings.
+- Security summary.
+
+## Explanation Functions
+
+The system explains:
+
+- What was detected.
+- Why it matters.
+- What security risk it may create.
+- Which component is affected.
+- What can be done to mitigate the issue.
+
+## Report Flow
+
+```mermaid
+flowchart TD
+    A[Analysis Findings] --> B[Organize Findings]
+
+    B --> C[Permissions]
+    B --> D[Vulnerabilities]
+    B --> E[Risk Factors]
+
+    C --> F[Report Generator]
+    D --> F
+    E --> F
+
+    F --> G[Security Report]
+    G --> H[Explanations]
+    G --> I[Recommendations]
+```
+
+---
+
+# 10. Scan History
+
+The **Scan History** module stores previous APK security scans and allows users to review previous results.
+
+It provides a chronological record of security assessments.
+
+## Features
+
+- Record previously scanned APKs.
+- Store APK/application name.
+- Store package name.
+- Store scan date and time.
+- Store scan result.
+- Store detected vulnerabilities.
+- Store permission-related findings.
+- Store overall risk level.
+- View previous scan details.
+- Compare repeated scans.
+- Identify changes between repeated scans.
+- Delete old scan records.
+- Maintain a chronological list of security assessments.
+
+## Scan History Flow
+
+```mermaid
+flowchart TD
+    A[APK Scan Complete] --> B[Generate Result]
+
+    B --> C[Store Scan]
+    C --> D[(Scan History)]
+
+    D --> E[View History]
+    D --> F[View Scan Details]
+    D --> G[Compare Scans]
+    D --> H[Delete Scan]
+```
+
+---
+
+# 11. Overall Data Flow Diagram
+
+The overall data flow of APVM connects application information, process monitoring, permission analysis, APK scanning, risk assessment, reporting, and scan history.
+
+```mermaid
+flowchart TD
+    U[User] --> A[Android App]
+
+    A --> P[Process Manager]
+    A --> R[Permission Auditor]
+    A --> S[APK Scanner]
+
+    P --> PF[Process Findings]
+    R --> RF[Permission Findings]
+    S --> VF[Vulnerability Findings]
+
+    RF --> RA[Risk Assessment]
+    VF --> RA
+
+    PF --> DB[(Security Data)]
+    RF --> DB
+    VF --> DB
+    RA --> DB
+
+    RA --> RP[Security Report]
+    RP --> H[(Scan History)]
+
+    DB --> D[Security Dashboard]
+    H --> D
+```
+
+---
+
+# 12. Detailed APK Security Analysis Data Flow
+
+The APK scanning pipeline can be represented as follows:
+
+```mermaid
+flowchart TD
+    A[APK File] --> B[APK Extraction]
+
+    B --> C[Manifest Parser]
+    B --> D[DEX / Smali Parser]
+    B --> E[Resource Parser]
+
+    C --> F[Component Checks]
+    C --> G[Permission Checks]
+
+    D --> H[Code Security Checks]
+    E --> H
+
+    F --> I[Finding Engine]
+    G --> I
+    H --> I
+
+    I --> J[Severity Classification]
+    J --> K[Risk Assessment]
+    K --> L[Security Report]
+    L --> M[(Scan History)]
+```
+
+---
+
+# 13. Integrated Application Workflow
+
+The complete user workflow is:
+
+```mermaid
+flowchart TD
+    A[Open APVM] --> B[Security Dashboard]
+
+    B --> C[Process Manager]
+    B --> D[Permission Auditor]
+    B --> E[APK Scanner]
+    B --> F[Scan History]
+
+    C --> G[Process Findings]
+    D --> H[Permission Findings]
+    E --> I[Vulnerability Findings]
+
+    H --> J[Risk Assessment]
+    I --> J
+
+    J --> K[Security Report]
+    K --> L[Save Scan]
+    L --> F
+
+    F --> B
+    G --> B
+```
+
+---
+
+# 14. Backend Architecture
+
+The backend provides APIs for communication between the Android application and the security-analysis engine.
+
+## Technology Stack
+
+### Android Client
+
+- Kotlin
+- Jetpack Compose
+- Material Design
+- Android PackageManager
+- UsageStatsManager
+- Android application/system APIs
+
+### Backend
+
+- Python
+- FastAPI
+- REST API
+- JSON
+
+### APK Analysis
+
+- JADX
+- Apktool
+- Androguard
+- AndroidManifest.xml parsing
+- Smali/code static analysis
+
+### Database
+
+- SQLite for local development and prototyping.
+- PostgreSQL for production-scale deployment.
+
+## Backend Flow
+
+```mermaid
+flowchart TD
+    A[Android Client] --> B[FastAPI]
+
+    B --> C[APK Parser]
+    C --> D[Static Analyzer]
+
+    D --> E[Finding Engine]
+    E --> F[Risk Engine]
+
+    F --> G[Report Generator]
+    G --> H[(Database)]
+```
+
+---
+
+# 15. API Structure
+
+The backend can expose the following REST API endpoints:
+
+```text
+/api/apps
+/api/processes
+/api/permissions
+/api/upload
+/api/analyze
+/api/findings
+/api/risk
+/api/report
+/api/history
+```
+
+### API Responsibilities
+
+```text
+/api/apps
+→ Retrieve application information.
+
+/api/processes
+→ Retrieve process-related information.
+
+/api/permissions
+→ Retrieve permission information.
+
+/api/upload
+→ Receive an APK for analysis.
+
+/api/analyze
+→ Start APK security analysis.
+
+/api/findings
+→ Return detected security findings.
+
+/api/risk
+→ Generate or retrieve the security risk assessment.
+
+/api/report
+→ Generate the security report.
+
+/api/history
+→ Store and retrieve previous scan results.
+```
+
+---
+
+# 16. Database Architecture
+
+SQLite can be used during development, with PostgreSQL as a potential production database.
+
+## Application Table
+
+```text
+APPLICATION
+- application_id
+- package_name
+- application_name
+- version
+- installed_date
+```
+
+## Permission Table
+
+```text
+PERMISSION
+- permission_id
+- permission_name
+- permission_category
+- risk_level
+```
+
+## Application Permission Table
+
+```text
+APPLICATION_PERMISSION
+- application_id
+- permission_id
+```
+
+## APK Scan Table
+
+```text
+APK_SCAN
+- scan_id
+- package_name
+- apk_name
+- scan_timestamp
+- risk_level
+- risk_score
+```
+
+## Vulnerability Table
+
+```text
+VULNERABILITY
+- vulnerability_id
+- scan_id
+- vulnerability_name
+- affected_component
+- severity
+- description
+- recommendation
+```
+
+## Scan History Table
+
+```text
+SCAN_HISTORY
+- history_id
+- scan_id
+- timestamp
+- result
+```
+
+---
+
+# 17. Risk Scoring Model
+
+The risk engine combines multiple security indicators.
+
+A conceptual risk model is:
+
+```text
+Risk Score =
+    Permission Risk
+  + Vulnerability Risk
+  + Component Exposure Risk
+  + Severity Weight
+```
+
+For example:
+
+```text
+Dangerous Permission
+        ↓
+Permission Risk
+
+Special Permission
+        ↓
+Permission Risk
+
+Excessive Permission Combination
+        ↓
+Permission Risk
+
+Exported Component
+        ↓
+Component Exposure Risk
+
+Known Vulnerability
+        ↓
+Vulnerability Risk
+
+High/Critical Finding
+        ↓
+Higher Severity Weight
+```
+
+The resulting score can be mapped to an overall security level:
+
+```text
+LOW
+MEDIUM
+HIGH
+CRITICAL
+```
+
+The scoring weights should be finalized during implementation and validated using controlled test APKs.
+
+---
+
+# 18. Security Finding Structure
+
+Each security finding should contain a consistent structure:
+
+```text
+Finding
+├── Finding Name
+├── Category
+├── Severity
+├── Affected Application
+├── Affected Component
+├── Evidence
+├── Description
+├── Security Impact
+└── Recommendation
+```
+
+Example:
+
+```text
+Finding Name:
+Exported Activity
+
+Category:
+Component Exposure
+
+Severity:
+HIGH
+
+Affected Component:
+MainActivity
+
+Evidence:
+Activity is exported without appropriate protection.
+
+Security Impact:
+Another application may be able to invoke the component.
+
+Recommendation:
+Restrict component exposure and apply appropriate access controls.
+```
+
+---
+
+# 19. Testing Strategy
+
+APVM should be tested using controlled applications and APKs with different security characteristics.
+
+## Test Case 1 — Normal Application
+
+```text
+Input:
+Application with standard permissions and secure configuration.
+
+Expected Result:
+Low-risk or informational findings.
+```
+
+## Test Case 2 — Dangerous Permissions
+
+```text
+Input:
+Application requesting multiple dangerous permissions.
+
+Expected Result:
+Permission warnings and increased permission risk.
+```
+
+## Test Case 3 — Special Permissions
+
+```text
+Input:
+Application requesting special-access permissions.
+
+Expected Result:
+Special-permission findings.
+```
+
+## Test Case 4 — Exported Components
+
+```text
+Input:
+APK containing exposed activities/services/receivers/providers.
+
+Expected Result:
+Component exposure findings.
+```
+
+## Test Case 5 — Insecure WebView
+
+```text
+Input:
+APK containing an insecure WebView configuration.
+
+Expected Result:
+Static-analysis security finding.
+```
+
+## Test Case 6 — Multiple Vulnerabilities
+
+```text
+Input:
+APK containing several security weaknesses.
+
+Expected Result:
+Multiple findings and a higher overall risk level.
+```
+
+## Test Case 7 — Repeated Scan
+
+```text
+Input:
+Same APK scanned multiple times.
+
+Expected Result:
+Results stored separately and available for comparison.
+```
+
+---
+
+# 20. Implementation Roadmap
+
+| Phase | Duration | Module | Deliverables |
+|---|---|---|---|
+| Phase 1 | Weeks 1–2 | Security Dashboard + Process Manager | Android project foundation, das
