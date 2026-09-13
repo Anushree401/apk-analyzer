@@ -59,20 +59,7 @@ fun PermissionAuditorScreen(
             .background(Background)
     ) {
 
-        APVMTopBar()
-
-        Text(
-            text = "← BACK",
-            color = SecondaryText,
-            modifier = Modifier
-                .padding(
-                    horizontal = 20.dp,
-                    vertical = 8.dp
-                )
-                .clickable {
-                    onBack()
-                }
-        )
+        APVMTopBar(onBack = onBack)
 
         LazyColumn(
             modifier = Modifier

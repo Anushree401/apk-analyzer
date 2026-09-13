@@ -74,10 +74,6 @@ fun ProcessManagerScreen(
         )
     }
 
-    /*
-     * Re-check Usage Access every time the app
-     * comes back to the foreground.
-     */
     DisposableEffect(lifecycleOwner) {
 
         val observer = LifecycleEventObserver { _, event ->
@@ -100,11 +96,6 @@ fun ProcessManagerScreen(
         }
     }
 
-    /*
-     * null = loading
-     * emptyList = finished, nothing found
-     * non-empty = real data
-     */
     val processes by produceState<List<ProcessInfo>?>(
         initialValue = null,
         key1 = context,
@@ -138,20 +129,7 @@ fun ProcessManagerScreen(
             .background(Background)
     ) {
 
-        APVMTopBar()
-
-        Text(
-            text = "← BACK",
-            color = SecondaryText,
-            modifier = Modifier
-                .padding(
-                    horizontal = 20.dp,
-                    vertical = 8.dp
-                )
-                .clickable {
-                    onBack()
-                }
-        )
+        APVMTopBar(onBack = onBack)
 
         Column(
             modifier = Modifier
@@ -190,9 +168,6 @@ fun ProcessManagerScreen(
                 modifier = Modifier.height(18.dp)
             )
 
-            /*
-             * USAGE ACCESS REQUIRED
-             */
             if (!hasUsageAccess) {
 
                 Column(
@@ -266,10 +241,6 @@ fun ProcessManagerScreen(
 
             } else {
 
-                /*
-                 * PROCESS STATISTICS
-                 */
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement =
@@ -301,9 +272,6 @@ fun ProcessManagerScreen(
                     modifier = Modifier.height(16.dp)
                 )
 
-                /*
-                 * SEARCH + REFRESH
-                 */
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

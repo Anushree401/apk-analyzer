@@ -113,7 +113,7 @@ fun ApkScannerScreen(
             .background(Background)
     ) {
 
-        APVMTopBar()
+        APVMTopBar(onBack = onBack)
 
         LazyColumn(
             modifier = Modifier
