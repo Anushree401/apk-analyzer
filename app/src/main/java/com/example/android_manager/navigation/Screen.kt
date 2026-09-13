@@ -9,4 +9,6 @@ sealed class Screen(
     data object PermissionAuditor : Screen("permission_auditor")
 
     data object ProcessManager : Screen("process_manager")
+
+    data object ApkScanner : Screen("apk_scanner")
 }

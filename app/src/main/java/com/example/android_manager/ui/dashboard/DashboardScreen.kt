@@ -35,7 +35,8 @@ import com.example.android_manager.model.ProcessInfo
 fun DashboardScreen(
     modifier: Modifier = Modifier,
     onNavigateToPermissions: () -> Unit = {},
-    onNavigateToProcessManager: () -> Unit = {}
+    onNavigateToProcessManager: () -> Unit = {},
+    onNavigateToScanner: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -160,7 +161,7 @@ fun DashboardScreen(
             item {
                 ModuleCard(
                     title = "APK Scanner",
-                    onClick = {}
+                    onClick = onNavigateToScanner
                 )
             }
 

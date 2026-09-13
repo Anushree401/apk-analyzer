@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.android_manager.ui.dashboard.DashboardScreen
 import com.example.android_manager.ui.permissions.PermissionAuditorScreen
 import com.example.android_manager.ui.process.ProcessManagerScreen
+import com.example.android_manager.ui.scanner.ApkScannerScreen
 
 @Composable
 fun AppNavigation() {
@@ -28,6 +29,9 @@ fun AppNavigation() {
                 },
                 onNavigateToProcessManager = {
                     navController.navigate(Screen.ProcessManager.route)
+                },
+                onNavigateToScanner = {
+                    navController.navigate(Screen.ApkScanner.route)
                 }
             )
         }
@@ -45,6 +49,15 @@ fun AppNavigation() {
 
         composable(Screen.ProcessManager.route) {
             ProcessManagerScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.ApkScanner.route) {
+
+            ApkScannerScreen(
                 onBack = {
                     navController.popBackStack()
                 }
