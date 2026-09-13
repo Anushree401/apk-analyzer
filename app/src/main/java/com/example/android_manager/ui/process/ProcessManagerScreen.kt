@@ -35,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
 
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -52,6 +54,8 @@ import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
 import com.example.android_manager.ui.theme.Surface
 
+import kotlinx.coroutines.delay
+
 @Composable
 fun ProcessManagerScreen(
     modifier: Modifier = Modifier,
@@ -59,10 +63,6 @@ fun ProcessManagerScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
-    var refreshKey by remember {
-        mutableStateOf(0)
-    }
 
     var searchQuery by remember {
         mutableStateOf("")
@@ -72,6 +72,26 @@ fun ProcessManagerScreen(
         mutableStateOf(
             ProcessRepository(context).hasUsageAccess()
         )
+    }
+
+    val repository = remember {
+        ProcessRepository(context)
+    }
+
+    var refreshKey by remember {
+        mutableIntStateOf(0)
+    }
+
+    LaunchedEffect(Unit) {
+
+        while (true) {
+
+            delay(1000)
+
+            if (repository.hasUsageAccess()) {
+                refreshKey++
+            }
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
