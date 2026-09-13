@@ -35,6 +35,10 @@ import com.example.android_manager.ui.theme.SecondaryText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.DisposableEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +71,8 @@ fun DashboardScreen(
         mutableStateOf(false)
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     LaunchedEffect(Unit) {
 
         val cached =
@@ -95,6 +101,38 @@ fun DashboardScreen(
         } finally {
 
             isRefreshing = false
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+
+        val observer = LifecycleEventObserver { _, event ->
+
+            if (event == Lifecycle.Event.ON_RESUME) {
+
+                scope.launch {
+
+                    isRefreshing = true
+
+                    try {
+                        val fresh = withContext(Dispatchers.IO) {
+                            repository.refresh()
+                        }
+
+                        totalApps = fresh.totalApps
+                        totalProcesses = fresh.totalProcesses
+
+                    } finally {
+                        isRefreshing = false
+                    }
+                }
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -205,7 +243,7 @@ fun DashboardScreen(
                                     ?.toString()
                                     ?: "—",
 
-                            label = "Processes",
+                            label = "Active Apps",
 
                             modifier =
                                 Modifier.weight(1f)

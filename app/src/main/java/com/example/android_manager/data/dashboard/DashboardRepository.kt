@@ -9,51 +9,46 @@ data class DashboardData(
     val totalProcesses: Int
 )
 
-class DashboardRepository(
-    context: Context
-) {
+class DashboardRepository(context: Context) {
 
-    private val appRepository =
-        AppRepository(context)
+    private val appRepository = AppRepository(context)
+    private val processRepository = ProcessRepository(context)
+    private val cacheRepository = DashboardCacheRepository(context)
 
-    private val processRepository =
-        ProcessRepository(context)
-
-    private val cacheRepository =
-        DashboardCacheRepository(context)
-
-    fun getCachedData(): DashboardCachedData {
-        return cacheRepository.getCachedData()
-    }
+    fun getCachedData(): DashboardCachedData =
+        cacheRepository.getCachedData()
 
     fun refresh(): DashboardData {
 
-        /*
-         * Apps are recalculated and then cached.
-         */
-        val apps =
-            appRepository.getInstalledApps()
+        val apps = appRepository.getInstalledApps()
+        val totalApps = apps.size
 
-        val totalApps =
-            apps.size
+        cacheRepository.saveTotalApps(totalApps)
 
-        cacheRepository.saveTotalApps(
-            totalApps = totalApps
-        )
+        val foreground =
+            processRepository.getCurrentForegroundApp()
 
-        val processes =
-            if (
-                processRepository.hasUsageAccess()
-            ) {
-                processRepository
-                    .getRecentlyActiveApps()
-            } else {
-                emptyList()
+        val background =
+            processRepository.getBackgroundProcesses()
+
+        val activePackages =
+            buildSet {
+
+                foreground?.packageName?.let {
+                    add(it)
+                }
+
+                background.forEach {
+                    add(it.packageName)
+                }
             }
+
+        val totalActiveApps =
+            activePackages.size
 
         return DashboardData(
             totalApps = totalApps,
-            totalProcesses = processes.size
+            totalProcesses = totalActiveApps
         )
     }
 }

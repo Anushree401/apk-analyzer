@@ -2,11 +2,9 @@ package com.example.android_manager.ui.process
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,100 +17,75 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-
 import com.example.android_manager.data.process.ProcessRepository
 import com.example.android_manager.model.ProcessExitInfo
 import com.example.android_manager.model.ProcessInfo
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
+import com.example.android_manager.ui.theme.Border
 import com.example.android_manager.ui.theme.Graphite
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
-import com.example.android_manager.ui.theme.Surface
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import androidx.core.net.toUri
 
 @Composable
 fun ProcessManagerScreen(
-    modifier: Modifier = Modifier,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit
 ) {
 
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
+    val context = androidx.compose.ui.platform.LocalContext.current
     val repository = remember {
         ProcessRepository(context)
     }
 
-    var searchQuery by remember {
-        mutableStateOf("")
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var currentProcess by remember {
+        mutableStateOf<ProcessInfo?>(null)
     }
 
-    var hasUsageAccess by remember {
-        mutableStateOf(
-            repository.hasUsageAccess()
-        )
+    var exitHistory by remember {
+        mutableStateOf<List<ProcessExitInfo>>(emptyList())
     }
 
-    var refreshKey by remember {
-        mutableIntStateOf(0)
+    var usageAccess by remember {
+        mutableStateOf(false)
     }
 
-    var exitRefreshKey by remember {
-        mutableIntStateOf(0)
+    var isLoading by remember {
+        mutableStateOf(true)
     }
 
-    LaunchedEffect(Unit) {
-
-        while (true) {
-
-            delay(1000)
-
-            if (repository.hasUsageAccess()) {
-                refreshKey++
-            }
-        }
+    var backgroundProcesses by remember {
+        mutableStateOf<List<ProcessInfo>>(emptyList())
     }
 
-    LaunchedEffect(Unit) {
-
-        while (true) {
-
-            delay(5000)
-
-            exitRefreshKey++
-        }
+    var recentlyActiveApps by remember {
+        mutableStateOf<List<ProcessInfo>>(emptyList())
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -120,16 +93,15 @@ fun ProcessManagerScreen(
         val observer =
             LifecycleEventObserver { _, event ->
 
-                if (
-                    event == Lifecycle.Event.ON_RESUME
-                ) {
+                if (event == Lifecycle.Event.ON_RESUME) {
 
-                    hasUsageAccess =
+                    usageAccess =
                         repository.hasUsageAccess()
 
-                    if (hasUsageAccess) {
-                        refreshKey++
-                        exitRefreshKey++
+                    if (usageAccess) {
+
+                        currentProcess =
+                            repository.getCurrentForegroundApp()
                     }
                 }
             }
@@ -137,84 +109,54 @@ fun ProcessManagerScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(
-                observer
-            )
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    val processes by produceState<List<ProcessInfo>?>(
-        initialValue = null,
-        key1 = refreshKey,
-        key2 = hasUsageAccess
-    ) {
+    LaunchedEffect(usageAccess) {
 
-        if (!hasUsageAccess) {
+        if (!usageAccess) {
+            isLoading = false
+            return@LaunchedEffect
+        }
 
-            value = emptyList()
+        while (true) {
 
-        } else {
-
-            value =
+            val overview =
                 withContext(Dispatchers.IO) {
 
-                    repository
-                        .getRecentlyActiveApps()
-                }
-        }
-    }
-
-    val exitHistory =
-        produceState<List<ProcessExitInfo>>(
-            initialValue = emptyList(),
-            key1 = exitRefreshKey
-        ) {
-
-            if (
-                Build.VERSION.SDK_INT >=
-                Build.VERSION_CODES.R
-            ) {
-
-                value =
-                    withContext(Dispatchers.IO) {
-                        repository
-                            .getProcessExitHistory()
-                    }
-
-            } else {
-
-                value = emptyList()
-            }
-        }
-
-    fun openAppInfo(packageName: String) {
-
-        val intent =
-            Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-            ).apply {
-
-                data =
-                    Uri.parse(
-                        "package:$packageName"
+                    Triple(
+                        repository.getCurrentForegroundApp(),
+                        repository.getBackgroundProcesses(),
+                        repository.getRecentlyActiveApps()
                     )
-            }
+                }
 
-        context.startActivity(intent)
+            currentProcess = overview.first
+            backgroundProcesses = overview.second
+            recentlyActiveApps = overview.third
+
+            isLoading = false
+
+            delay(1000)
+        }
     }
 
-    val filteredProcesses =
-        processes?.filter {
+    LaunchedEffect(Unit) {
 
-            it.processName.contains(
-                searchQuery,
-                ignoreCase = true
-            )
+        while (true) {
 
-        } ?: emptyList()
+            exitHistory =
+                withContext(Dispatchers.IO) {
+                    repository.getProcessExitHistory()
+                }
+
+            delay(5000)
+        }
+    }
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(Background)
     ) {
@@ -223,544 +165,427 @@ fun ProcessManagerScreen(
             onBack = onBack
         )
 
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 20.dp
-                )
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(14.dp)
         ) {
 
-            Text(
-                text = "PROCESS MANAGER",
-                color = PrimaryText,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium
-            )
+            item {
 
-            Spacer(
-                modifier = Modifier.height(6.dp)
-            )
+                Spacer(
+                    Modifier.height(8.dp)
+                )
 
-            Text(
-                text =
-                    when {
+                Text(
+                    text = "Process Manager",
+                    color = PrimaryText,
+                    fontSize = 22.sp
+                )
 
-                        !hasUsageAccess ->
-                            "USAGE ACCESS REQUIRED"
+                Text(
+                    text = "Monitor application activity and process events",
+                    color = SecondaryText,
+                    fontSize = 13.sp
+                )
 
-                        processes == null ->
-                            "CALCULATING..."
+                Spacer(
+                    Modifier.height(10.dp)
+                )
+            }
 
-                        else ->
-                            "${processes!!.size} ACTIVE APPLICATIONS"
-                    },
-                color = SecondaryText,
-                fontSize = 14.sp
-            )
+            if (!usageAccess) {
 
-            Spacer(
-                modifier = Modifier.height(18.dp)
-            )
+                item {
 
-            if (!hasUsageAccess) {
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Surface,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(18.dp)
-                ) {
-
-                    Text(
-                        text = "USAGE ACCESS REQUIRED",
-                        color = PrimaryText,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-
-                    Text(
-                        text =
-                            "APVM needs Usage Access to detect recently active applications.",
-                        color = SecondaryText,
-                        fontSize = 13.sp
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(14.dp)
-                    )
-
-                    Text(
-                        text = "GRANT USAGE ACCESS",
-                        color = PrimaryText,
+                    Column(
                         modifier = Modifier
-                            .background(
-                                Graphite,
-                                RoundedCornerShape(10.dp)
+                            .fillMaxWidth()
+                            .border(
+                                1.dp,
+                                Border,
+                                RoundedCornerShape(12.dp)
                             )
-                            .clickable {
+                            .padding(18.dp)
+                    ) {
 
+                        Text(
+                            text = "USAGE ACCESS REQUIRED",
+                            color = PrimaryText,
+                            fontSize = 14.sp
+                        )
+
+                        Spacer(
+                            Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            text =
+                                "APVM needs Usage Access to detect which application is currently in the foreground.",
+                            color = SecondaryText,
+                            fontSize = 12.sp
+                        )
+
+                        Spacer(
+                            Modifier.height(14.dp)
+                        )
+
+                        Button(
+                            onClick = {
                                 context.startActivity(
                                     Intent(
                                         Settings.ACTION_USAGE_ACCESS_SETTINGS
                                     )
                                 )
-                            }
-                            .padding(
-                                horizontal = 16.dp,
-                                vertical = 13.dp
-                            ),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(20.dp)
-                )
-
-                Text(
-                    text =
-                        "Enable APVM in Android's Usage Access settings, then return to this screen.",
-                    color = SecondaryText,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(
-                        horizontal = 4.dp
-                    )
-                )
-
-            } else {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(12.dp)
-                ) {
-
-                    ProcessStatCard(
-                        value =
-                            processes
-                                ?.size
-                                ?.toString()
-                                ?: "!",
-                        label = "PROCESSES",
-                        modifier =
-                            Modifier.weight(1f)
-                    )
-
-                    ProcessStatCard(
-                        value = "—",
-                        label = "RAM MB",
-                        modifier =
-                            Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment =
-                        Alignment.CenterVertically
-                ) {
-
-                    BasicTextField(
-                        value = searchQuery,
-
-                        onValueChange = {
-                            searchQuery = it
-                        },
-
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                Surface,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .padding(
-                                horizontal = 14.dp,
-                                vertical = 13.dp
-                            ),
-
-                        singleLine = true,
-
-                        textStyle = TextStyle(
-                            color = PrimaryText,
-                            fontSize = 14.sp
-                        ),
-
-                        cursorBrush =
-                            SolidColor(PrimaryText),
-
-                        decorationBox = {
-                                innerTextField ->
-
-                            if (
-                                searchQuery.isEmpty()
-                            ) {
-
-                                Text(
-                                    text =
-                                        "Search processes...",
-                                    color =
-                                        SecondaryText,
-                                    fontSize = 14.sp
-                                )
-                            }
-
-                            innerTextField()
-                        }
-                    )
-
-                    Spacer(
-                        modifier = Modifier.size(10.dp)
-                    )
-
-                    Text(
-                        text = "REFRESH",
-                        color = PrimaryText,
-                        modifier = Modifier
-                            .background(
-                                Graphite,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-
-                                refreshKey++
-                                exitRefreshKey++
-                            }
-                            .padding(
-                                horizontal = 14.dp,
-                                vertical = 13.dp
-                            ),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-
-
-        Spacer(
-            modifier = Modifier.height(16.dp)
-        )
-
-        if (hasUsageAccess) {
-
-            if (processes == null) {
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-
-                    horizontalAlignment =
-                        Alignment.CenterHorizontally
-                ) {
-
-                    CircularProgressIndicator(
-                        modifier =
-                            Modifier.size(28.dp),
-                        color = Graphite
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(12.dp)
-                    )
-
-                    Text(
-                        text =
-                            "Loading process information...",
-                        color = SecondaryText
-                    )
-                }
-
-            } else if (
-                filteredProcesses.isEmpty()
-            ) {
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-
-                    horizontalAlignment =
-                        Alignment.CenterHorizontally
-                ) {
-
-                    Text(
-                        text =
-                            "NO RECENTLY ACTIVE APPLICATIONS",
-                        color = PrimaryText,
-                        fontSize = 14.sp,
-                        fontWeight =
-                            FontWeight.Medium
-                    )
-
-                    Spacer(
-                        modifier =
-                            Modifier.height(8.dp)
-                    )
-
-                    Text(
-                        text =
-                            if (searchQuery.isEmpty()) {
-                                "No application activity was detected."
-                            } else {
-                                "No applications match your search."
                             },
-                        color = SecondaryText,
-                        fontSize = 13.sp
-                    )
-                }
-
-            } else {
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(
-                            horizontal = 20.dp
-                        ),
-
-                    verticalArrangement =
-                        Arrangement.spacedBy(10.dp)
-                ) {
-
-                    /*
-                     * ACTIVE APPLICATIONS
-                     */
-                    item {
-
-                        Text(
-                            text = "RECENTLY ACTIVE",
-                            color = PrimaryText,
-                            fontSize = 14.sp,
-                            fontWeight =
-                                FontWeight.Medium
-                        )
-                    }
-
-                    items(
-                        items = filteredProcesses,
-                        key = {
-                            "${it.processName}_${it.pid}"
-                        }
-                    ) { process ->
-
-                        ProcessCard(
-                            process = process,
-                            onTerminate = {
-                                openAppInfo(
-                                    process.processName
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = Graphite
                                 )
-                            },
-                            onHibernate = {
-                                openAppInfo(
-                                    process.processName
-                                )
-                            }
-                        )
-                    }
-
-
-                    /*
-                     * PROCESS EXIT HISTORY
-                     */
-                    item {
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(14.dp)
-                        )
-
-                        Text(
-                            text =
-                                "RECENT PROCESS EVENTS",
-                            color = PrimaryText,
-                            fontSize = 14.sp,
-                            fontWeight =
-                                FontWeight.Medium
-                        )
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(4.dp)
-                        )
-
-                        Text(
-                            text =
-                                "Android-reported process exit history",
-                            color = SecondaryText,
-                            fontSize = 12.sp
-                        )
-                    }
-
-
-                    if (
-                        exitHistory.value.isEmpty()
-                    ) {
-
-                        item {
+                        ) {
 
                             Text(
-                                text =
-                                    "No recent process exit events available.",
-                                color = SecondaryText,
-                                fontSize = 13.sp,
-                                modifier =
-                                    Modifier.padding(
-                                        vertical = 8.dp
-                                    )
+                                text = "OPEN SETTINGS",
+                                color = PrimaryText
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+
+                Text(
+                    text = "CURRENT ACTIVITY",
+                    color = SecondaryText,
+                    fontSize = 12.sp
+                )
+
+                Spacer(
+                    Modifier.height(8.dp)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(
+                            1.dp,
+                            Border,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(18.dp)
+                ) {
+
+                    if (isLoading) {
+
+                        Row(
+                            verticalAlignment =
+                                Alignment.CenterVertically
+                        ) {
+
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Graphite
+                            )
+
+                            Spacer(
+                                Modifier.size(12.dp)
+                            )
+
+                            Text(
+                                text = "DETECTING...",
+                                color = SecondaryText
                             )
                         }
 
                     } else {
 
-                        items(
-                            items = exitHistory.value,
-                            key = {
-                                "${it.packageName}_${it.timestamp}_${it.reason}"
-                            }
-                        ) { exit ->
+                        val process = currentProcess
 
-                            ProcessExitCard(
-                                exit = exit
+                        if (process != null) {
+
+                            Text(
+                                text = process.processName,
+                                color = PrimaryText,
+                                fontSize = 17.sp
+                            )
+
+                            Spacer(
+                                Modifier.height(5.dp)
+                            )
+
+                            Text(
+                                text =
+                                    "Foreground application detected",
+                                color = SecondaryText,
+                                fontSize = 12.sp
+                            )
+
+                            Spacer(
+                                Modifier.height(14.dp)
+                            )
+
+                            Row(
+                                horizontalArrangement =
+                                    Arrangement.spacedBy(10.dp)
+                            ) {
+
+                                Button(
+                                    onClick = {
+                                        openAppSettings(
+                                            context,
+                                            process.processName
+                                        )
+                                    },
+                                    colors =
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = Graphite
+                                        )
+                                ) {
+
+                                    Text(
+                                        text = "APP SETTINGS",
+                                        color = PrimaryText
+                                    )
+                                }
+                            }
+
+                        } else {
+
+                            Text(
+                                text = "NO EXTERNAL APP DETECTED",
+                                color = SecondaryText,
+                                fontSize = 13.sp
                             )
                         }
                     }
-
-
-                    item {
-
-                        Spacer(
-                            modifier =
-                                Modifier.height(80.dp)
-                        )
-                    }
                 }
+            }
+
+            item {
+
+                Text(
+                    text = "BACKGROUND / RUNNING",
+                    color = PrimaryText,
+                    fontSize = 15.sp
+                )
+            }
+
+            if (backgroundProcesses.isEmpty()) {
+
+                item {
+
+                    Text(
+                        text =
+                            "No background processes currently exposed by Android.",
+                        color = SecondaryText,
+                        fontSize = 12.sp
+                    )
+                }
+
+            } else {
+
+                items(
+                    backgroundProcesses,
+                    key = {
+                        "${it.packageName}_${it.pid}"
+                    }
+                ) { process ->
+
+                    BackgroundProcessCard(
+                        process = process
+                    )
+                }
+            }
+
+            item {
+
+                Text(
+                    text = "RECENTLY ACTIVE",
+                    color = PrimaryText,
+                    fontSize = 15.sp
+                )
+            }
+
+            if (recentlyActiveApps.isEmpty()) {
+
+                item {
+
+                    Text(
+                        text = "No recently active applications.",
+                        color = SecondaryText,
+                        fontSize = 12.sp
+                    )
+                }
+
+            } else {
+
+                items(
+                    recentlyActiveApps,
+                    key = {
+                        "${it.packageName}_${it.lastActiveTime}"
+                    }
+                ) { app ->
+
+                    RecentlyActiveCard(
+                        process = app
+                    )
+                }
+            }
+
+            item {
+
+                Text(
+                    text = "RECENT PROCESS EVENTS",
+                    color = PrimaryText,
+                    fontSize = 15.sp
+                )
+            }
+
+            if (exitHistory.isEmpty()) {
+
+                item {
+
+                    Text(
+                        text =
+                            "No process exit events reported by Android.",
+                        color = SecondaryText,
+                        fontSize = 12.sp
+                    )
+                }
+
+            } else {
+
+                items(
+                    exitHistory,
+                    key = {
+                        "${it.packageName}_${it.timestamp}"
+                    }
+                ) { event ->
+
+                    ProcessEventCard(
+                        event = event
+                    )
+                }
+            }
+
+            item {
+                Spacer(
+                    Modifier.height(30.dp)
+                )
             }
         }
     }
 }
 
+
+private fun openAppSettings(
+    context: android.content.Context,
+    packageName: String
+) {
+    val intent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        "package:$packageName".toUri()
+    )
+
+    context.startActivity(intent)
+}
+
+
 @Composable
-private fun ProcessStatCard(
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier
+private fun ProcessEventCard(
+    event: ProcessExitInfo
 ) {
 
+    val formatter =
+        remember {
+            SimpleDateFormat(
+                "dd MMM, HH:mm",
+                Locale.getDefault()
+            )
+        }
+
     Column(
-        modifier = modifier
-            .background(
-                Surface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                1.dp,
+                Border,
                 RoundedCornerShape(12.dp)
             )
             .padding(16.dp)
     ) {
 
         Text(
-            text = value,
+            text = event.reason,
             color = PrimaryText,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Medium
+            fontSize = 13.sp
         )
 
         Spacer(
-            modifier = Modifier.height(4.dp)
+            Modifier.height(5.dp)
         )
 
         Text(
-            text = label,
+            text = event.processName,
+            color = PrimaryText,
+            fontSize = 15.sp
+        )
+
+        Spacer(
+            Modifier.height(4.dp)
+        )
+
+        Text(
+            text = event.packageName,
             color = SecondaryText,
             fontSize = 12.sp
         )
+
+        Spacer(
+            Modifier.height(4.dp)
+        )
+
+        Text(
+            text = formatter.format(
+                Date(event.timestamp)
+            ),
+            color = SecondaryText,
+            fontSize = 11.sp
+        )
+
+        event.description?.let {
+
+            Spacer(
+                Modifier.height(6.dp)
+            )
+
+            Text(
+                text = it,
+                color = SecondaryText,
+                fontSize = 11.sp
+            )
+        }
     }
 }
 
 @Composable
-private fun ProcessCard(
-    process: ProcessInfo,
-    onTerminate: () -> Unit,
-    onHibernate: () -> Unit
+private fun BackgroundProcessCard(
+    process: ProcessInfo
 ) {
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Surface,
+            .border(
+                1.dp,
+                Border,
                 RoundedCornerShape(12.dp)
             )
             .padding(16.dp)
     ) {
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.SpaceBetween,
-            verticalAlignment =
-                Alignment.CenterVertically
-        ) {
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-
-                Text(
-                    text = process.processName,
-                    color = PrimaryText,
-                    fontSize = 16.sp,
-                    fontWeight =
-                        FontWeight.Medium
-                )
-
-                Spacer(
-                    modifier =
-                        Modifier.height(5.dp)
-                )
-
-                Text(
-                    text =
-                        if (process.pid >= 0) {
-                            "PID ${process.pid}"
-                        } else {
-                            "PID unavailable"
-                        },
-                    color = SecondaryText,
-                    fontSize = 12.sp
-                )
-            }
-
-            Text(
-                text =
-                    if (process.isForeground) {
-                        "FOREGROUND"
-                    } else {
-                        "RECENT"
-                    },
-                color = SecondaryText,
-                fontSize = 11.sp,
-                fontWeight =
-                    FontWeight.Medium
-            )
-        }
-
-
-        Spacer(
-            modifier = Modifier.height(14.dp)
-        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -769,133 +594,107 @@ private fun ProcessCard(
         ) {
 
             Text(
-                text = "RAM",
-                color = SecondaryText,
-                fontSize = 12.sp
+                text = process.processName,
+                color = PrimaryText,
+                fontSize = 15.sp
             )
 
             Text(
-                text =
-                    if (process.memoryMb > 0) {
-                        "${process.memoryMb} MB"
-                    } else {
-                        "Unavailable"
-                    },
-                color = PrimaryText,
-                fontSize = 12.sp
+                text = "BACKGROUND",
+                color = SecondaryText,
+                fontSize = 10.sp
             )
         }
 
-
         Spacer(
-            modifier = Modifier.height(14.dp)
+            Modifier.height(5.dp)
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.spacedBy(10.dp)
-        ) {
+        Text(
+            text = process.packageName,
+            color = SecondaryText,
+            fontSize = 12.sp
+        )
 
-            Text(
-                text = "TERMINATE",
-                color = PrimaryText,
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        Graphite,
-                        RoundedCornerShape(9.dp)
-                    )
-                    .clickable {
-                        onTerminate()
-                    }
-                    .padding(
-                        vertical = 11.dp
-                    ),
-                fontSize = 12.sp,
-                fontWeight =
-                    FontWeight.Medium
+        if (process.pid > 0) {
+
+            Spacer(
+                Modifier.height(4.dp)
             )
 
             Text(
-                text = "HIBERNATE",
-                color = PrimaryText,
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        Graphite,
-                        RoundedCornerShape(9.dp)
-                    )
-                    .clickable {
-                        onHibernate()
-                    }
-                    .padding(
-                        vertical = 11.dp
-                    ),
-                fontSize = 12.sp,
-                fontWeight =
-                    FontWeight.Medium
+                text = "PID ${process.pid}",
+                color = SecondaryText,
+                fontSize = 11.sp
             )
         }
     }
 }
 
 @Composable
-private fun ProcessExitCard(
-    exit: ProcessExitInfo
+private fun RecentlyActiveCard(
+    process: ProcessInfo
 ) {
+
+    val formatter =
+        remember {
+            SimpleDateFormat(
+                "HH:mm:ss",
+                Locale.getDefault()
+            )
+        }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Surface,
+            .border(
+                1.dp,
+                Border,
                 RoundedCornerShape(12.dp)
             )
             .padding(16.dp)
     ) {
 
-        Text(
-            text = exit.processName,
-            color = PrimaryText,
-            fontSize = 15.sp,
-            fontWeight =
-                FontWeight.Medium
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement =
+                Arrangement.SpaceBetween
+        ) {
 
-        Spacer(
-            modifier = Modifier.height(5.dp)
-        )
-
-        Text(
-            text = exit.reason,
-            color = PrimaryText,
-            fontSize = 12.sp,
-            fontWeight =
-                FontWeight.Medium
-        )
-
-        Spacer(
-            modifier = Modifier.height(5.dp)
-        )
-
-        Text(
-            text = exit.packageName,
-            color = SecondaryText,
-            fontSize = 11.sp
-        )
-
-        exit.description?.let { description ->
-
-            Spacer(
-                modifier = Modifier.height(7.dp)
+            Text(
+                text = process.processName,
+                color = PrimaryText,
+                fontSize = 15.sp
             )
 
             Text(
-                text = description,
+                text = "RECENT",
                 color = SecondaryText,
-                fontSize = 12.sp
+                fontSize = 10.sp
             )
         }
+
+        Spacer(
+            Modifier.height(5.dp)
+        )
+
+        Text(
+            text = process.packageName,
+            color = SecondaryText,
+            fontSize = 12.sp
+        )
+
+        Spacer(
+            Modifier.height(4.dp)
+        )
+
+        Text(
+            text =
+                "Last active ${formatter.format(
+                    Date(process.lastActiveTime)
+                )}",
+            color = SecondaryText,
+            fontSize = 11.sp
+        )
     }
 }
