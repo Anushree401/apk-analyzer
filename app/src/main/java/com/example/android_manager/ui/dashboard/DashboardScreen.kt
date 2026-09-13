@@ -1,5 +1,6 @@
 package com.example.android_manager.ui.dashboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,52 +10,114 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.android_manager.data.apps.AppRepository
+import com.example.android_manager.data.dashboard.DashboardRepository
 import com.example.android_manager.ui.components.APVMBottomBar
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.components.FindingCard
 import com.example.android_manager.ui.components.ModuleCard
 import com.example.android_manager.ui.components.StatCard
+import com.example.android_manager.ui.theme.Background
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.background
-import com.example.android_manager.ui.theme.Background
-import com.example.android_manager.data.process.ProcessRepository
-import com.example.android_manager.model.ProcessInfo
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
-    onNavigateToPermissions: () -> Unit = {},
-    onNavigateToProcessManager: () -> Unit = {},
-    onNavigateToScanner: () -> Unit = {}
+    onPermissionAuditor: () -> Unit = {},
+    onProcessManager: () -> Unit = {},
+    onApkScanner: () -> Unit = {}
 ) {
+
     val context = LocalContext.current
 
-    val installedApps = produceState<Int?>(
-        initialValue = null,
-        key1 = context
-    ) {
-        value = withContext(Dispatchers.IO) {
-            AppRepository(context).getInstalledApps().size
+    val repository =
+        remember {
+            DashboardRepository(context)
+        }
+
+    val scope =
+        rememberCoroutineScope()
+
+    var totalApps by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    var totalProcesses by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    var isRefreshing by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(Unit) {
+
+        val cached =
+            withContext(Dispatchers.IO) {
+                repository.getCachedData()
+            }
+
+        totalApps =
+            cached.totalApps
+
+        isRefreshing = true
+
+        try {
+
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    repository.refresh()
+                }
+
+            totalApps =
+                fresh.totalApps
+
+            totalProcesses =
+                fresh.totalProcesses
+
+        } finally {
+
+            isRefreshing = false
         }
     }
 
-    val activeProcesses = produceState<List<ProcessInfo>?>(
-        initialValue = null,
-        key1 = context
-    ) {
-        value = withContext(Dispatchers.IO) {
-            ProcessRepository(context).getRecentlyActiveApps()
+    suspend fun refreshDashboard() {
+
+        isRefreshing = true
+
+        try {
+
+            val fresh =
+                withContext(Dispatchers.IO) {
+                    repository.refresh()
+                }
+
+            totalApps =
+                fresh.totalApps
+
+            totalProcesses =
+                fresh.totalProcesses
+
+        } finally {
+
+            isRefreshing = false
         }
     }
 
@@ -66,159 +129,196 @@ fun DashboardScreen(
 
         APVMTopBar()
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+
+            onRefresh = {
+                scope.launch {
+                    refreshDashboard()
+                }
+            },
+
+            modifier =
+                Modifier.weight(1f)
         ) {
 
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "DEVICE SECURITY STATUS",
-                    color = SecondaryText
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "MEDIUM RISK",
-                    color = PrimaryText
-                )
-
-                Text(
-                    text = "68 / 100",
-                    color = PrimaryText,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(
-                        value = installedApps.value?.toString() ?: "!",
-                        label = "APPS",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    StatCard(
-                        value = activeProcesses.value?.size?.toString() ?: "!",
-                        label = "PROCESSES",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(
-                        value = "12",
-                        label = "DANGEROUS",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    StatCard(
-                        value = "07",
-                        label = "VULNERABILITIES",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "QUICK MODULES",
-                    color = SecondaryText
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "Process Manager",
-                    onClick = onNavigateToProcessManager
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "Permission Auditor",
-                    onClick = onNavigateToPermissions
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "APK Scanner",
-                    onClick = onNavigateToScanner
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "Risk Assessment",
-                    onClick = {}
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "Reports",
-                    onClick = {}
-                )
-            }
-
-            item {
-                ModuleCard(
-                    title = "History",
-                    onClick = {}
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "RECENT FINDINGS",
-                    color = SecondaryText
-                )
-            }
-
-            items(
-                listOf(
-                    Triple(
-                        "HIGH",
-                        "Insecure WebView",
-                        "com.unknown.malware.app"
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        horizontal = 20.dp
                     ),
-                    Triple(
-                        "MEDIUM",
-                        "Sensitive Permission: RECORD_AUDIO",
-                        "com.social.app"
+
+                verticalArrangement =
+                    Arrangement.spacedBy(14.dp)
+            ) {
+
+                item {
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(8.dp)
                     )
-                )
-            ) { finding ->
 
-                FindingCard(
-                    severity = finding.first,
-                    title = finding.second,
-                    packageName = finding.third
-                )
-            }
+                    Text(
+                        text = "Security Dashboard",
+                        color = PrimaryText
+                    )
 
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text =
+                            "Android security overview",
+                        color = SecondaryText
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+                }
+
+                item {
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        horizontalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        StatCard(
+                            value =
+                                totalApps
+                                    ?.toString()
+                                    ?: "—",
+
+                            label = "Apps",
+
+                            modifier =
+                                Modifier.weight(1f)
+                        )
+
+                        StatCard(
+                            value =
+                                totalProcesses
+                                    ?.toString()
+                                    ?: "—",
+
+                            label = "Processes",
+
+                            modifier =
+                                Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                item {
+
+                    Row(
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        horizontalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        StatCard(
+                            value = "12",
+                            label = "Dangerous",
+                            modifier =
+                                Modifier.weight(1f)
+                        )
+
+                        StatCard(
+                            value = "07",
+                            label = "Vulnerabilities",
+                            modifier =
+                                Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                item {
+
+                    Text(
+                        text = "Security Modules",
+                        color = PrimaryText
+                    )
+                }
+
+
+                item {
+
+                    ModuleCard(
+                        title =
+                            "Permission Auditor",
+
+                        description =
+                            "Audit installed application permissions",
+
+                        onClick =
+                            onPermissionAuditor
+                    )
+                }
+
+
+                item {
+
+                    ModuleCard(
+                        title =
+                            "Process Manager",
+
+                        description =
+                            "Monitor recently active applications and process events",
+
+                        onClick =
+                            onProcessManager
+                    )
+                }
+
+
+                item {
+
+                    ModuleCard(
+                        title =
+                            "APK Security Scanner",
+
+                        description =
+                            "Analyze APK metadata and detect security vulnerabilities",
+
+                        onClick =
+                            onApkScanner
+                    )
+                }
+
+                item {
+
+                    Text(
+                        text = "Recent Findings",
+                        color = PrimaryText
+                    )
+                }
+
+
+                item {
+
+                    FindingCard(
+                        severity = "MEDIUM",
+                        title =
+                            "Security monitoring active",
+                        packageName = "APVM"
+                    )
+                }
+
+
+                item {
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(20.dp)
+                    )
+                }
             }
         }
 

@@ -2,8 +2,11 @@ package com.example.android_manager.ui.components
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -12,10 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.android_manager.ui.theme.Border
 import com.example.android_manager.ui.theme.PrimaryText
+import com.example.android_manager.ui.theme.SecondaryText
 
 @Composable
 fun ModuleCard(
     title: String,
+    description: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -30,9 +35,24 @@ fun ModuleCard(
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
-        Text(
-            text = title,
-            color = PrimaryText
-        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+
+            Text(
+                text = title,
+                color = PrimaryText
+            )
+
+            Spacer(
+                modifier = Modifier.height(5.dp)
+            )
+
+            Text(
+                text = description,
+                color = SecondaryText
+            )
+        }
     }
 }

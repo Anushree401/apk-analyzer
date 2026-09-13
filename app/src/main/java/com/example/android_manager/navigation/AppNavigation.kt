@@ -24,13 +24,13 @@ fun AppNavigation() {
         ) {
 
             DashboardScreen(
-                onNavigateToPermissions = {
+                onPermissionAuditor = {
                     navController.navigate(Screen.PermissionAuditor.route)
                 },
-                onNavigateToProcessManager = {
+                onProcessManager = {
                     navController.navigate(Screen.ProcessManager.route)
                 },
-                onNavigateToScanner = {
+                onApkScanner = {
                     navController.navigate(Screen.ApkScanner.route)
                 }
             )
