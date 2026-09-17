@@ -209,4 +209,157 @@ class RiskAssessmentRepository(
 
         return list
     }
+
+    /**
+     * Assesses the real-time security risk of an installed application on the device.
+     */
+    fun assessInstalledApp(packageName: String): RiskAssessment {
+        val pm = context.packageManager
+
+        val packageInfo = pm.getPackageInfo(
+            packageName,
+            PackageManager.GET_PERMISSIONS or
+                    PackageManager.GET_ACTIVITIES or
+                    PackageManager.GET_SERVICES or
+                    PackageManager.GET_RECEIVERS or
+                    PackageManager.GET_PROVIDERS
+        )
+
+        val appInfo = packageInfo.applicationInfo
+            ?: throw IllegalArgumentException("Application info missing for $packageName")
+
+        val appLabel = appInfo.loadLabel(pm).toString()
+        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
+        // 1. Permissions
+        val permissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
+        val permResult = permissionEvaluator.evaluate(permissions)
+
+        // 2. Component Exposure
+        val compResult = componentEvaluator.evaluate(packageInfo)
+
+        // 3. Configuration & Hardening
+        val configResult = configurationEvaluator.evaluate(
+            applicationInfo = appInfo,
+            targetSdk = appInfo.targetSdkVersion,
+            minSdk = if (android.os.Build.VERSION.SDK_INT >= 24) appInfo.minSdkVersion else 21
+        )
+
+        // Vulnerability proxy for installed apps without static DEX decompilation
+        val vulnScore = 0
+        val vulnLevel = RiskLevel.LOW
+
+        // Composite score for installed apps
+        // 45% Permission Risk, 35% Component Exposure, 20% Configuration Hardening
+        val rawComposite = (permResult.score * 0.45) +
+                (compResult.score * 0.35) +
+                (configResult.score * 0.20)
+
+        val overallScore = rawComposite.roundToInt().coerceIn(0, 100)
+        val overallLevel = RiskLevel.fromScore(overallScore)
+
+        val allFactors = mutableListOf<RiskFactor>()
+        allFactors.addAll(permResult.contributingFactors)
+        allFactors.addAll(compResult.contributingFactors)
+        allFactors.addAll(configResult.contributingFactors)
+
+        val recommendations = generateRecommendations(
+            isDebuggable = configResult.isDebuggable,
+            allowBackup = configResult.allowBackup,
+            usesCleartext = configResult.usesCleartextTraffic,
+            compBreakdown = compResult.breakdown,
+            vulnFindings = emptyList(),
+            permResult = permResult
+        )
+
+        return RiskAssessment(
+            targetName = appLabel,
+            packageName = packageName,
+            versionName = packageInfo.versionName,
+            overallScore = overallScore,
+            overallLevel = overallLevel,
+            permissionRisk = permResult.score,
+            permissionRiskLevel = permResult.level,
+            vulnerabilityRisk = vulnScore,
+            vulnerabilityRiskLevel = vulnLevel,
+            componentExposureRisk = compResult.score,
+            componentExposureRiskLevel = compResult.level,
+            configurationRisk = configResult.score,
+            configurationRiskLevel = configResult.level,
+            contributingFactors = allFactors.sortedByDescending { it.scorePenalty },
+            detectedCombinations = permResult.combinations,
+            componentBreakdown = compResult.breakdown,
+            recommendations = recommendations,
+            isSystemApp = isSystem
+        )
+    }
+
+    /**
+     * Calculates the device-wide security posture across installed applications.
+     */
+    fun assessDevicePosture(packageNames: List<String>): com.example.android_manager.model.DeviceRiskPosture {
+        val assessments = mutableListOf<RiskAssessment>()
+        val permissionFrequencies = mutableMapOf<String, Int>()
+
+        for (pkg in packageNames) {
+            try {
+                val assessment = assessInstalledApp(pkg)
+                assessments.add(assessment)
+
+                // Track permission frequencies
+                assessment.contributingFactors
+                    .filter { it.category == com.example.android_manager.model.RiskCategory.PERMISSION && it.evidence != null }
+                    .forEach { factor ->
+                        val perm = factor.evidence!!
+                        permissionFrequencies[perm] = (permissionFrequencies[perm] ?: 0) + 1
+                    }
+            } catch (ignored: Exception) {
+                // Skip apps that cannot be queried
+            }
+        }
+
+        if (assessments.isEmpty()) {
+            return com.example.android_manager.model.DeviceRiskPosture(
+                overallScore = 0,
+                overallLevel = RiskLevel.LOW,
+                totalAppsAudited = 0,
+                criticalAppsCount = 0,
+                highRiskAppsCount = 0,
+                mediumRiskAppsCount = 0,
+                lowRiskAppsCount = 0
+            )
+        }
+
+        val criticalCount = assessments.count { it.overallLevel == RiskLevel.CRITICAL }
+        val highCount = assessments.count { it.overallLevel == RiskLevel.HIGH }
+        val mediumCount = assessments.count { it.overallLevel == RiskLevel.MEDIUM }
+        val lowCount = assessments.count { it.overallLevel == RiskLevel.LOW }
+
+        // Average score weighted by high/critical outliers
+        val avgScore = assessments.map { it.overallScore }.average()
+        val penaltyMultiplier = (criticalCount * 4) + (highCount * 2)
+        val postureScore = (avgScore + penaltyMultiplier).roundToInt().coerceIn(0, 100)
+        val postureLevel = RiskLevel.fromScore(postureScore)
+
+        val topRisky = assessments
+            .sortedByDescending { it.overallScore }
+            .take(5)
+
+        val topPermissions = permissionFrequencies.entries
+            .sortedByDescending { it.value }
+            .take(5)
+            .map { Pair(it.key, it.value) }
+
+        return com.example.android_manager.model.DeviceRiskPosture(
+            overallScore = postureScore,
+            overallLevel = postureLevel,
+            totalAppsAudited = assessments.size,
+            criticalAppsCount = criticalCount,
+            highRiskAppsCount = highCount,
+            mediumRiskAppsCount = mediumCount,
+            lowRiskAppsCount = lowCount,
+            topRiskApps = topRisky,
+            mostCommonRiskyPermissions = topPermissions
+        )
+    }
 }
