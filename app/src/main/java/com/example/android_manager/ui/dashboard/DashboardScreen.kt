@@ -46,7 +46,8 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
     onPermissionAuditor: () -> Unit = {},
     onProcessManager: () -> Unit = {},
-    onApkScanner: () -> Unit = {}
+    onApkScanner: () -> Unit = {},
+    onRiskAssessment: () -> Unit = {}
 ) {
 
     val context = LocalContext.current
@@ -327,6 +328,21 @@ fun DashboardScreen(
 
                         onClick =
                             onApkScanner
+                    )
+                }
+
+
+                item {
+
+                    ModuleCard(
+                        title =
+                            "Security Risk Assessment",
+
+                        description =
+                            "Evaluate multi-vector risk scores, permission vectors, and component exposure",
+
+                        onClick =
+                            onRiskAssessment
                     )
                 }
 

@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.android_manager.ui.dashboard.DashboardScreen
 import com.example.android_manager.ui.permissions.PermissionAuditorScreen
 import com.example.android_manager.ui.process.ProcessManagerScreen
+import com.example.android_manager.ui.risk.RiskAssessmentScreen
 import com.example.android_manager.ui.scanner.ApkScannerScreen
 
 @Composable
@@ -32,6 +33,9 @@ fun AppNavigation() {
                 },
                 onApkScanner = {
                     navController.navigate(Screen.ApkScanner.route)
+                },
+                onRiskAssessment = {
+                    navController.navigate(Screen.RiskAssessment.route)
                 }
             )
         }
@@ -58,6 +62,15 @@ fun AppNavigation() {
         composable(Screen.ApkScanner.route) {
 
             ApkScannerScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.RiskAssessment.route) {
+
+            RiskAssessmentScreen(
                 onBack = {
                     navController.popBackStack()
                 }

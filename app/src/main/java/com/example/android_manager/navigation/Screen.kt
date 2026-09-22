@@ -11,4 +11,10 @@ sealed class Screen(
     data object ProcessManager : Screen("process_manager")
 
     data object ApkScanner : Screen("apk_scanner")
+
+    data object RiskAssessment : Screen("risk_assessment")
+
+    data object SecurityReport : Screen("security_report")
+
+    data object ScanHistory : Screen("scan_history")
 }
