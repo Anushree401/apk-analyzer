@@ -38,7 +38,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ApkScannerScreen(
     modifier: Modifier = Modifier,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onNavigateToRiskAssessment: (() -> Unit)? = null
 ) {
 
     val context = LocalContext.current
@@ -248,6 +249,16 @@ fun ApkScannerScreen(
                         text = "findings: ${result.findings.size}",
                         color = SecondaryText
                     )
+
+                    if (onNavigateToRiskAssessment != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onNavigateToRiskAssessment,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("VIEW RISK ASSESSMENT")
+                        }
+                    }
                 }
 
                 if (result.findings.isEmpty()) {

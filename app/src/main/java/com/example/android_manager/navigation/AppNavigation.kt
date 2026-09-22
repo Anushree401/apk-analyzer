@@ -64,6 +64,9 @@ fun AppNavigation() {
             ApkScannerScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onNavigateToRiskAssessment = {
+                    navController.navigate(Screen.RiskAssessment.route)
                 }
             )
         }
