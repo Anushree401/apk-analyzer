@@ -32,13 +32,13 @@ interface ScanHistoryDao {
     suspend fun insert(entry: ScanHistoryEntity): Long
 
     @Delete
-    suspend fun delete(entry: ScanHistoryEntity)
+    suspend fun delete(entry: ScanHistoryEntity): Int
 
     @Query("DELETE FROM scan_history WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteById(id: Long): Int
 
     @Query("DELETE FROM scan_history")
-    suspend fun clearAll()
+    suspend fun clearAll(): Int
 
     @Query("SELECT COUNT(*) FROM scan_history")
     fun getCount(): Flow<Int>
