@@ -1,11 +1,15 @@
 package com.example.android_manager.ui.history
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -32,7 +36,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Main Scan History screen displaying logged APK and system audit records.
+ * Main Scan History screen displaying logged APK and system audit records
+ * with live search, severity filtering, inspection sheets, and deletion.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +59,7 @@ fun ScanHistoryScreen(
     var entryToDelete by remember { mutableStateOf<ScanHistoryEntry?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
 
+    // Collect scan records from Room
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             repository.getAllHistory().collectLatest { list ->
@@ -62,6 +68,20 @@ fun ScanHistoryScreen(
                     isLoading = false
                 }
             }
+        }
+    }
+
+    // Filter entries based on search text and risk chip
+    val filteredEntries = remember(allEntries, searchQuery, selectedRiskFilter) {
+        allEntries.filter { entry ->
+            val matchesSearch = if (searchQuery.isBlank()) {
+                true
+            } else {
+                entry.targetName.contains(searchQuery, ignoreCase = true) ||
+                        entry.packageName.contains(searchQuery, ignoreCase = true)
+            }
+            val matchesRisk = selectedRiskFilter == null || entry.riskLevel == selectedRiskFilter
+            matchesSearch && matchesRisk
         }
     }
 
@@ -106,10 +126,74 @@ fun ScanHistoryScreen(
                         selectedRiskFilter = selectedRiskFilter,
                         onRiskFilterSelect = { selectedRiskFilter = it }
                     )
+
+                    if (filteredEntries.isEmpty()) {
+                        ScanHistoryEmptyState(
+                            isFiltered = allEntries.isNotEmpty(),
+                            onResetFilter = {
+                                searchQuery = ""
+                                selectedRiskFilter = null
+                            },
+                            onStartScan = onNavigateToScan
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(filteredEntries, key = { it.id }) { entry ->
+                                ScanHistoryCard(
+                                    entry = entry,
+                                    onClick = { selectedEntryForDetail = entry },
+                                    onDeleteClick = { entryToDelete = entry }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
 
         APVMBottomBar(modifier = Modifier.padding(12.dp))
+    }
+
+    // Detail Inspection Sheet
+    selectedEntryForDetail?.let { entry ->
+        ScanHistoryDetailSheet(
+            entry = entry,
+            onDismiss = { selectedEntryForDetail = null }
+        )
+    }
+
+    // Delete Single Item Confirmation Dialog
+    entryToDelete?.let { entry ->
+        ScanHistoryDeleteDialog(
+            isClearAll = false,
+            targetName = entry.targetName,
+            onConfirm = {
+                scope.launch(Dispatchers.IO) {
+                    repository.deleteScan(entry.id)
+                }
+                entryToDelete = null
+            },
+            onDismiss = { entryToDelete = null }
+        )
+    }
+
+    // Clear All Confirmation Dialog
+    if (showClearAllDialog) {
+        ScanHistoryDeleteDialog(
+            isClearAll = true,
+            onConfirm = {
+                scope.launch(Dispatchers.IO) {
+                    repository.clearHistory()
+                }
+                showClearAllDialog = false
+            },
+            onDismiss = { showClearAllDialog = false }
+        )
     }
 }
