@@ -84,6 +84,7 @@ fun ApkScannerScreen(
 
         isScanning = true
         errorMessage = null
+        val startTime = System.currentTimeMillis()
 
         try {
 
@@ -96,6 +97,23 @@ fun ApkScannerScreen(
                 }
 
             analysisResult = result
+
+            // Automatically record scan to persistent history
+            withContext(Dispatchers.IO) {
+                try {
+                    val durationMs = System.currentTimeMillis() - startTime
+                    val risk = com.example.android_manager.data.risk.RiskAssessmentRepository(context)
+                        .assessApkResult(result)
+                    com.example.android_manager.data.history.ScanHistoryRepository(context)
+                        .recordApkScan(
+                            result = result,
+                            risk = risk,
+                            durationMs = durationMs
+                        )
+                } catch (_: Exception) {
+                    // Non-blocking: failure to record history should not crash analysis display
+                }
+            }
 
         } catch (e: Exception) {
 
