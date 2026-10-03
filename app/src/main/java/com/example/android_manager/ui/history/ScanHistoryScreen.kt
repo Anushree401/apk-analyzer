@@ -157,7 +157,17 @@ fun ScanHistoryScreen(
             }
         }
 
-        APVMBottomBar(modifier = Modifier.padding(12.dp))
+        APVMBottomBar(
+            currentScreen = com.example.android_manager.navigation.Screen.ScanHistory,
+            onNavigate = { screen ->
+                when (screen) {
+                    com.example.android_manager.navigation.Screen.Dashboard -> onBack()
+                    com.example.android_manager.navigation.Screen.ApkScanner -> onNavigateToScan()
+                    else -> Unit
+                }
+            },
+            modifier = Modifier.padding(12.dp)
+        )
     }
 
     // Detail Inspection Sheet

@@ -386,6 +386,18 @@ fun DashboardScreen(
             }
         }
 
-        APVMBottomBar()
+        APVMBottomBar(
+            currentScreen = com.example.android_manager.navigation.Screen.Dashboard,
+            onNavigate = { screen ->
+                when (screen) {
+                    com.example.android_manager.navigation.Screen.PermissionAuditor -> onPermissionAuditor()
+                    com.example.android_manager.navigation.Screen.ProcessManager -> onProcessManager()
+                    com.example.android_manager.navigation.Screen.ApkScanner -> onApkScanner()
+                    com.example.android_manager.navigation.Screen.RiskAssessment -> onRiskAssessment()
+                    com.example.android_manager.navigation.Screen.ScanHistory -> onScanHistory()
+                    else -> Unit
+                }
+            }
+        )
     }
 }
