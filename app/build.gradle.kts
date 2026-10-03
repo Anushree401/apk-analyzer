@@ -60,3 +60,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.gson)
 }
+
+ksp {
+    arg("room.generateKotlin", "true")
+}
