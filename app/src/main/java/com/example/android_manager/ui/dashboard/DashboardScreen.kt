@@ -47,7 +47,8 @@ fun DashboardScreen(
     onPermissionAuditor: () -> Unit = {},
     onProcessManager: () -> Unit = {},
     onApkScanner: () -> Unit = {},
-    onRiskAssessment: () -> Unit = {}
+    onRiskAssessment: () -> Unit = {},
+    onScanHistory: () -> Unit = {}
 ) {
 
     val context = LocalContext.current
@@ -343,6 +344,15 @@ fun DashboardScreen(
 
                         onClick =
                             onRiskAssessment
+                    )
+                }
+
+                item {
+
+                    ModuleCard(
+                        title = "Scan History & Audit Log",
+                        description = "Review past APK security assessments, findings, and inspection logs",
+                        onClick = onScanHistory
                     )
                 }
 

@@ -37,6 +37,9 @@ fun AppNavigation() {
                 },
                 onRiskAssessment = {
                     navController.navigate(Screen.RiskAssessment.route)
+                },
+                onScanHistory = {
+                    navController.navigate(Screen.ScanHistory.route)
                 }
             )
         }
