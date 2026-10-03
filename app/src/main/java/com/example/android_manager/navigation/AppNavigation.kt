@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.android_manager.ui.dashboard.DashboardScreen
+import com.example.android_manager.ui.history.ScanHistoryScreen
 import com.example.android_manager.ui.permissions.PermissionAuditorScreen
 import com.example.android_manager.ui.process.ProcessManagerScreen
 import com.example.android_manager.ui.risk.RiskAssessmentScreen
@@ -76,6 +77,17 @@ fun AppNavigation() {
             RiskAssessmentScreen(
                 onBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.ScanHistory.route) {
+            ScanHistoryScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToScan = {
+                    navController.navigate(Screen.ApkScanner.route)
                 }
             )
         }
