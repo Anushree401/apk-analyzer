@@ -18,11 +18,30 @@ data class ReportAppMetadata(
 )
 
 /**
+ * Summary metrics for executive overview presentation.
+ */
+data class ReportExecutiveSummary(
+    val overallScore: Int,
+    val overallLevel: RiskLevel,
+    val criticalCount: Int,
+    val highCount: Int,
+    val mediumCount: Int,
+    val lowCount: Int,
+    val totalFindingsCount: Int,
+    val totalPermissionsCount: Int,
+    val dangerousPermissionsCount: Int,
+    val specialPermissionsCount: Int,
+    val totalExportedComponents: Int,
+    val summaryNarrative: String
+)
+
+/**
  * Core security report model representing an application or APK security evaluation.
  */
 data class SecurityReport(
     val id: String = java.util.UUID.randomUUID().toString(),
     val metadata: ReportAppMetadata,
+    val summary: ReportExecutiveSummary,
     val riskAssessment: RiskAssessment,
     val vulnerabilityFindings: List<VulnerabilityFinding> = emptyList(),
     val dangerousPermissions: List<PermissionEntry> = emptyList(),
