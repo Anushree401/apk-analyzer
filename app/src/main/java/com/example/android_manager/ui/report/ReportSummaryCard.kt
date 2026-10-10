@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +17,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -38,6 +43,10 @@ import com.example.android_manager.ui.theme.Border
 import com.example.android_manager.ui.theme.BorderSubtle
 import com.example.android_manager.ui.theme.CyberCyan
 import com.example.android_manager.ui.theme.PrimaryText
+import com.example.android_manager.ui.theme.RiskCritical
+import com.example.android_manager.ui.theme.RiskHigh
+import com.example.android_manager.ui.theme.RiskLow
+import com.example.android_manager.ui.theme.RiskMedium
 import com.example.android_manager.ui.theme.SecondaryText
 import com.example.android_manager.ui.theme.Surface
 import com.example.android_manager.ui.theme.color
@@ -45,11 +54,14 @@ import com.example.android_manager.ui.theme.containerColor
 
 /**
  * Executive Summary Card presenting the primary security score gauge,
- * overall threat rating badge, and high-level posture narrative.
+ * overall threat rating badge, high-level posture narrative,
+ * quick telemetry tally metrics, and interactive severity filter chips.
  */
 @Composable
 fun ReportSummaryCard(
     summary: ReportExecutiveSummary,
+    selectedSeverity: RiskLevel? = null,
+    onSeveritySelect: ((RiskLevel?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
@@ -176,6 +188,133 @@ fun ReportSummaryCard(
             textAlign = TextAlign.Center,
             lineHeight = 18.sp,
             modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Telemetry Metrics Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            MetricPill(
+                value = "${summary.totalFindingsCount}",
+                label = "Findings",
+                modifier = Modifier.weight(1f)
+            )
+            MetricPill(
+                value = "${summary.dangerousPermissionsCount}",
+                label = "Dangerous",
+                modifier = Modifier.weight(1f)
+            )
+            MetricPill(
+                value = "${summary.totalExportedComponents}",
+                label = "Exported",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (onSeveritySelect != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Severity Filter Chip Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SeverityFilterChip(
+                    label = "ALL (${summary.totalFindingsCount})",
+                    isSelected = selectedSeverity == null,
+                    color = CyberCyan,
+                    onClick = { onSeveritySelect(null) }
+                )
+                SeverityFilterChip(
+                    label = "CRITICAL (${summary.criticalCount})",
+                    isSelected = selectedSeverity == RiskLevel.CRITICAL,
+                    color = RiskCritical,
+                    onClick = { onSeveritySelect(RiskLevel.CRITICAL) }
+                )
+                SeverityFilterChip(
+                    label = "HIGH (${summary.highCount})",
+                    isSelected = selectedSeverity == RiskLevel.HIGH,
+                    color = RiskHigh,
+                    onClick = { onSeveritySelect(RiskLevel.HIGH) }
+                )
+                SeverityFilterChip(
+                    label = "MEDIUM (${summary.mediumCount})",
+                    isSelected = selectedSeverity == RiskLevel.MEDIUM,
+                    color = RiskMedium,
+                    onClick = { onSeveritySelect(RiskLevel.MEDIUM) }
+                )
+                SeverityFilterChip(
+                    label = "LOW (${summary.lowCount})",
+                    isSelected = selectedSeverity == RiskLevel.LOW,
+                    color = RiskLow,
+                    onClick = { onSeveritySelect(RiskLevel.LOW) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MetricPill(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(BorderSubtle, RoundedCornerShape(8.dp))
+            .border(1.dp, Border, RoundedCornerShape(8.dp))
+            .padding(vertical = 10.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            color = PrimaryText,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label.uppercase(),
+            color = SecondaryText,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+private fun SeverityFilterChip(
+    label: String,
+    isSelected: Boolean,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .background(if (isSelected) color.copy(alpha = 0.2f) else BorderSubtle)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) color else Border,
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            color = if (isSelected) color else SecondaryText,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            fontFamily = FontFamily.Monospace
         )
     }
 }
