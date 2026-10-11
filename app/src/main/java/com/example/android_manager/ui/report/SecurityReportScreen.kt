@@ -1,5 +1,6 @@
 package com.example.android_manager.ui.report
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,7 +20,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -154,7 +159,18 @@ fun SecurityReportScreen(
             ) {
                 // Target Metadata Header
                 item {
-                    ReportTargetHeader(report = currentReport)
+                    ReportTargetHeader(
+                        report = currentReport,
+                        onShareClick = {
+                            val shareText = repository.formatReportForExport(currentReport)
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "APVM Security Audit Report - ${currentReport.metadata.appName}")
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Export Security Audit Report"))
+                        }
+                    )
                 }
 
                 // Executive Posture & Score Gauge Card
@@ -288,7 +304,10 @@ fun SecurityReportScreen(
 }
 
 @Composable
-private fun ReportTargetHeader(report: SecurityReport) {
+private fun ReportTargetHeader(
+    report: SecurityReport,
+    onShareClick: () -> Unit
+) {
     val meta = report.metadata
     val formattedDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(meta.scanTimestamp))
 
@@ -320,19 +339,36 @@ private fun ReportTargetHeader(report: SecurityReport) {
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .background(CyberCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                    .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = meta.scanType.displayName.uppercase(),
-                    color = CyberCyan,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
+                Box(
+                    modifier = Modifier
+                        .background(CyberCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = meta.scanType.displayName.uppercase(),
+                        color = CyberCyan,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                IconButton(
+                    onClick = onShareClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Export Report",
+                        tint = CyberCyan,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
