@@ -1,13 +1,16 @@
 package com.example.android_manager.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.android_manager.ui.dashboard.DashboardScreen
 import com.example.android_manager.ui.history.ScanHistoryScreen
 import com.example.android_manager.ui.permissions.PermissionAuditorScreen
 import com.example.android_manager.ui.process.ProcessManagerScreen
+import com.example.android_manager.ui.report.SecurityReportScreen
 import com.example.android_manager.ui.risk.RiskAssessmentScreen
 import com.example.android_manager.ui.scanner.ApkScannerScreen
 
@@ -80,6 +83,43 @@ fun AppNavigation() {
             RiskAssessmentScreen(
                 onBack = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = Screen.SecurityReport.route,
+            arguments = listOf(
+                navArgument("targetPkg") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                    nullable = true
+                },
+                navArgument("historyId") {
+                    type = NavType.LongType
+                    defaultValue = -1L
+                }
+            )
+        ) { backStackEntry ->
+            val targetPkg = backStackEntry.arguments?.getString("targetPkg")?.takeIf { it.isNotBlank() }
+            val historyId = backStackEntry.arguments?.getLong("historyId")?.takeIf { it > 0 }
+
+            SecurityReportScreen(
+                targetPackageName = targetPkg,
+                historyId = historyId,
+                onBack = {
+                    navController.popBackStack()
+                },
+                onNavigate = { screen ->
+                    when (screen) {
+                        Screen.Dashboard -> navController.navigate(Screen.Dashboard.route)
+                        Screen.PermissionAuditor -> navController.navigate(Screen.PermissionAuditor.route)
+                        Screen.ProcessManager -> navController.navigate(Screen.ProcessManager.route)
+                        Screen.ApkScanner -> navController.navigate(Screen.ApkScanner.route)
+                        Screen.RiskAssessment -> navController.navigate(Screen.RiskAssessment.route)
+                        Screen.ScanHistory -> navController.navigate(Screen.ScanHistory.route)
+                        else -> Unit
+                    }
                 }
             )
         }

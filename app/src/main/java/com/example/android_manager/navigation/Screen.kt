@@ -14,7 +14,13 @@ sealed class Screen(
 
     data object RiskAssessment : Screen("risk_assessment")
 
-    data object SecurityReport : Screen("security_report")
+    data object SecurityReport : Screen("security_report?targetPkg={targetPkg}&historyId={historyId}") {
+        fun createRoute(targetPkg: String? = null, historyId: Long? = null): String {
+            val pkg = targetPkg ?: ""
+            val hId = historyId ?: -1L
+            return "security_report?targetPkg=$pkg&historyId=$hId"
+        }
+    }
 
     data object ScanHistory : Screen("scan_history")
 }
