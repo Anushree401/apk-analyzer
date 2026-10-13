@@ -48,6 +48,7 @@ fun DashboardScreen(
     onProcessManager: () -> Unit = {},
     onApkScanner: () -> Unit = {},
     onRiskAssessment: () -> Unit = {},
+    onSecurityReport: () -> Unit = {},
     onScanHistory: () -> Unit = {}
 ) {
 
@@ -348,7 +349,14 @@ fun DashboardScreen(
                 }
 
                 item {
+                    ModuleCard(
+                        title = "Security Report & Explanation",
+                        description = "Generate comprehensive security reports and mitigation roadmaps",
+                        onClick = onSecurityReport
+                    )
+                }
 
+                item {
                     ModuleCard(
                         title = "Scan History & Audit Log",
                         description = "Review past APK security assessments, findings, and inspection logs",
@@ -394,6 +402,7 @@ fun DashboardScreen(
                     com.example.android_manager.navigation.Screen.ProcessManager -> onProcessManager()
                     com.example.android_manager.navigation.Screen.ApkScanner -> onApkScanner()
                     com.example.android_manager.navigation.Screen.RiskAssessment -> onRiskAssessment()
+                    com.example.android_manager.navigation.Screen.SecurityReport -> onSecurityReport()
                     com.example.android_manager.navigation.Screen.ScanHistory -> onScanHistory()
                     else -> Unit
                 }

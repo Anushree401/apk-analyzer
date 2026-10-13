@@ -54,8 +54,8 @@ fun APVMBottomBar(
         )
         BottomNavItem(
             label = "Reports",
-            isSelected = currentScreen == Screen.RiskAssessment,
-            onClick = { onNavigate?.invoke(Screen.RiskAssessment) }
+            isSelected = currentScreen == Screen.SecurityReport || currentScreen == Screen.RiskAssessment,
+            onClick = { onNavigate?.invoke(Screen.SecurityReport) }
         )
         BottomNavItem(
             label = "History",

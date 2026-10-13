@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,7 @@ import java.util.Locale
 fun ScanHistoryDetailSheet(
     entry: ScanHistoryEntry,
     onDismiss: () -> Unit,
+    onViewFullReport: ((Long) -> Unit)? = null,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val riskColor = entry.riskLevel.color()
@@ -192,6 +194,19 @@ fun ScanHistoryDetailSheet(
                 MetadataRow(label = "Scan Category", value = entry.scanType.displayName)
                 if (entry.scanDurationMs > 0) {
                     MetadataRow(label = "Scan Duration", value = "${entry.scanDurationMs} ms")
+                }
+            }
+
+            if (onViewFullReport != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onViewFullReport(entry.id)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("VIEW COMPLETE SECURITY REPORT")
                 }
             }
 

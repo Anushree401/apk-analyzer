@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
 fun ScanHistoryScreen(
     onBack: () -> Unit,
     onNavigateToScan: () -> Unit = {},
+    onNavigateToReport: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -174,7 +175,8 @@ fun ScanHistoryScreen(
     selectedEntryForDetail?.let { entry ->
         ScanHistoryDetailSheet(
             entry = entry,
-            onDismiss = { selectedEntryForDetail = null }
+            onDismiss = { selectedEntryForDetail = null },
+            onViewFullReport = onNavigateToReport
         )
     }
 

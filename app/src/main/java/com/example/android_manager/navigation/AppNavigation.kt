@@ -41,6 +41,9 @@ fun AppNavigation() {
                 onRiskAssessment = {
                     navController.navigate(Screen.RiskAssessment.route)
                 },
+                onSecurityReport = {
+                    navController.navigate(Screen.SecurityReport.route)
+                },
                 onScanHistory = {
                     navController.navigate(Screen.ScanHistory.route)
                 }
@@ -137,6 +140,9 @@ fun AppNavigation() {
                 },
                 onNavigateToScan = {
                     navController.navigate(Screen.ApkScanner.route)
+                },
+                onNavigateToReport = { historyId ->
+                    navController.navigate(Screen.SecurityReport.createRoute(historyId = historyId))
                 }
             )
         }
