@@ -39,7 +39,8 @@ import kotlinx.coroutines.withContext
 fun ApkScannerScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
-    onNavigateToRiskAssessment: (() -> Unit)? = null
+    onNavigateToRiskAssessment: (() -> Unit)? = null,
+    onNavigateToReport: (() -> Unit)? = null
 ) {
 
     val context = LocalContext.current
@@ -98,12 +99,15 @@ fun ApkScannerScreen(
 
             analysisResult = result
 
-            // Automatically record scan to persistent history
+            // Automatically record scan to persistent history and cache active security report
             withContext(Dispatchers.IO) {
                 try {
                     val durationMs = System.currentTimeMillis() - startTime
                     val risk = com.example.android_manager.data.risk.RiskAssessmentRepository(context)
                         .assessApkResult(result)
+                    val report = com.example.android_manager.data.report.SecurityReportRepository(context)
+                        .buildFromApkAnalysis(result, risk)
+                    com.example.android_manager.data.report.SecurityReportRepository.setActiveReport(report)
                     com.example.android_manager.data.history.ScanHistoryRepository(context)
                         .recordApkScan(
                             result = result,
@@ -267,6 +271,16 @@ fun ApkScannerScreen(
                         text = "findings: ${result.findings.size}",
                         color = SecondaryText
                     )
+
+                    if (onNavigateToReport != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = onNavigateToReport,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("VIEW COMPLETE SECURITY REPORT")
+                        }
+                    }
 
                     if (onNavigateToRiskAssessment != null) {
                         Spacer(modifier = Modifier.height(10.dp))

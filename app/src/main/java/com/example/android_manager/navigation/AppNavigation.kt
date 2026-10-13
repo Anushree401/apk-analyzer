@@ -74,6 +74,9 @@ fun AppNavigation() {
                 },
                 onNavigateToRiskAssessment = {
                     navController.navigate(Screen.RiskAssessment.route)
+                },
+                onNavigateToReport = {
+                    navController.navigate(Screen.SecurityReport.route)
                 }
             )
         }
