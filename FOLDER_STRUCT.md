@@ -1159,14 +1159,21 @@ SecurityReportScreen
 
 Represents a complete security report.
 
-### Should contain
+### Contains
 
 ```kotlin
 data class SecurityReport(
-    val app: AppInfo?,
-    val apkInfo: ApkInfo?,
-    val findings: List<VulnerabilityFinding>,
-    val riskAssessment: RiskAssessment
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val metadata: ReportAppMetadata,
+    val summary: ReportExecutiveSummary,
+    val riskAssessment: RiskAssessment,
+    val vulnerabilityFindings: List<VulnerabilityFinding> = emptyList(),
+    val dangerousPermissions: List<PermissionEntry> = emptyList(),
+    val specialPermissions: List<PermissionEntry> = emptyList(),
+    val allPermissions: List<PermissionEntry> = emptyList(),
+    val detectedCombinations: List<RiskCombination> = emptyList(),
+    val componentBreakdown: ComponentExposureBreakdown = ComponentExposureBreakdown(0, 0, 0, 0),
+    val recommendations: List<RiskRecommendation> = emptyList()
 )
 ```
 
