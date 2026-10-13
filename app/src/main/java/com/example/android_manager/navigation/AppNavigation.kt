@@ -86,6 +86,9 @@ fun AppNavigation() {
             RiskAssessmentScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onNavigateToReport = { pkg ->
+                    navController.navigate(Screen.SecurityReport.createRoute(targetPkg = pkg))
                 }
             )
         }

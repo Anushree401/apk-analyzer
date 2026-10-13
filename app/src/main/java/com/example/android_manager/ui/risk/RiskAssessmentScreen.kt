@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -72,6 +73,7 @@ enum class RiskScreenTab(val title: String) {
 fun RiskAssessmentScreen(
     initialPackageName: String? = null,
     onBack: () -> Unit = {},
+    onNavigateToReport: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -333,6 +335,17 @@ fun RiskAssessmentScreen(
                                         label = "OVERALL RISK SCORE",
                                         targetName = assessment.targetName
                                     )
+                                }
+
+                                if (onNavigateToReport != null) {
+                                    item {
+                                        Button(
+                                            onClick = { onNavigateToReport(assessment.packageName) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("VIEW FULL SECURITY REPORT")
+                                        }
+                                    }
                                 }
 
                                 item {
