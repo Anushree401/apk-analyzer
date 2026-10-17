@@ -1,3 +1,4 @@
+
 package com.example.android_manager.model
 
 /**
@@ -26,8 +27,6 @@ data class RiskFactor(
 
 /**
  * Represents a dangerous combination of permissions detected together.
- * For example: RECORD_AUDIO + INTERNET (eavesdropping risk)
- * or READ_SMS + RECEIVE_BOOT_COMPLETED (background intercept risk).
  */
 data class RiskCombination(
     val name: String,
@@ -47,7 +46,10 @@ data class ComponentExposureBreakdown(
     val unprotectedComponents: List<String> = emptyList()
 ) {
     val totalExported: Int
-        get() = totalExportedActivities + totalExportedServices + totalExportedReceivers + totalExportedProviders
+        get() = totalExportedActivities +
+                totalExportedServices +
+                totalExportedReceivers +
+                totalExportedProviders
 }
 
 /**
@@ -62,7 +64,10 @@ data class RiskRecommendation(
 )
 
 /**
- * Complete security risk assessment evaluation result for an application or APK.
+ * Complete security risk assessment evaluation result.
+ *
+ * A null category score and null category level mean that category was
+ * not assessed. They must not be interpreted as zero risk.
  */
 data class RiskAssessment(
     val targetName: String,
@@ -72,22 +77,23 @@ data class RiskAssessment(
     val overallLevel: RiskLevel,
     val permissionRisk: Int,
     val permissionRiskLevel: RiskLevel,
-    val vulnerabilityRisk: Int,
-    val vulnerabilityRiskLevel: RiskLevel,
+    val vulnerabilityRisk: Int?,
+    val vulnerabilityRiskLevel: RiskLevel?,
     val componentExposureRisk: Int,
     val componentExposureRiskLevel: RiskLevel,
     val configurationRisk: Int,
     val configurationRiskLevel: RiskLevel,
     val contributingFactors: List<RiskFactor> = emptyList(),
     val detectedCombinations: List<RiskCombination> = emptyList(),
-    val componentBreakdown: ComponentExposureBreakdown = ComponentExposureBreakdown(0, 0, 0, 0),
+    val componentBreakdown: ComponentExposureBreakdown =
+        ComponentExposureBreakdown(0, 0, 0, 0),
     val recommendations: List<RiskRecommendation> = emptyList(),
     val isSystemApp: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
 
 /**
- * Device-wide security posture aggregating security risks across installed applications.
+ * Device-wide security posture across installed applications.
  */
 data class DeviceRiskPosture(
     val overallScore: Int,

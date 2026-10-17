@@ -246,14 +246,15 @@ class RiskAssessmentRepository(
         )
 
         // Vulnerability proxy for installed apps without static DEX decompilation
-        val vulnScore = 0
-        val vulnLevel = RiskLevel.LOW
+        val vulnScore: Int? = null
+        val vulnLevel: RiskLevel? = null
 
         // Composite score for installed apps
         // 45% Permission Risk, 35% Component Exposure, 20% Configuration Hardening
-        val rawComposite = (permResult.score * 0.45) +
-                (compResult.score * 0.35) +
-                (configResult.score * 0.20)
+        val rawComposite =
+            (permResult.score * 0.45) +
+                    (compResult.score * 0.35) +
+                    (configResult.score * 0.20)
 
         val overallScore = rawComposite.roundToInt().coerceIn(0, 100)
         val overallLevel = RiskLevel.fromScore(overallScore)

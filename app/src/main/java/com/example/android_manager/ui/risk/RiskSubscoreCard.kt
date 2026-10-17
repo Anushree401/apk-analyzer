@@ -1,3 +1,4 @@
+
 package com.example.android_manager.ui.risk
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -104,18 +105,24 @@ fun RiskSubscoreCard(
 @Composable
 private fun SubscoreItem(
     title: String,
-    score: Int,
-    level: RiskLevel,
+    score: Int?,
+    level: RiskLevel?,
     description: String,
     modifier: Modifier = Modifier
 ) {
+    val assessed = score != null && level != null
+    val safeScore = score?.coerceIn(0, 100) ?: 0
+
     val animatedProgress by animateFloatAsState(
-        targetValue = score / 100f,
-        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        targetValue = if (assessed) safeScore / 100f else 0f,
+        animationSpec = tween(
+            durationMillis = 800,
+            easing = FastOutSlowInEasing
+        ),
         label = "SubscoreBar"
     )
 
-    val levelColor = level.color()
+    val levelColor = level?.color() ?: SecondaryText
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -138,7 +145,7 @@ private fun SubscoreItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "$score/100",
+                    text = if (assessed) "$safeScore/100" else "N/A",
                     color = PrimaryText,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
@@ -146,16 +153,19 @@ private fun SubscoreItem(
                 )
 
                 Text(
-                    text = level.name,
+                    text = if (assessed) {
+                        level!!.name
+                    } else {
+                        "NOT ASSESSED"
+                    },
                     color = levelColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
+                    letterSpacing = 0.5.sp
                 )
             }
         }
 
-        // Progress bar track
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,17 +173,23 @@ private fun SubscoreItem(
                 .clip(RoundedCornerShape(3.dp))
                 .background(BorderSubtle)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(animatedProgress)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(levelColor)
-            )
+            if (assessed) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(animatedProgress)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(levelColor)
+                )
+            }
         }
 
         Text(
-            text = description,
+            text = if (assessed) {
+                description
+            } else {
+                "$description. This category was not assessed for this scan."
+            },
             color = SecondaryText,
             fontSize = 11.sp,
             lineHeight = 14.sp

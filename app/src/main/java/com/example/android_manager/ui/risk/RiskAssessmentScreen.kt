@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import com.example.android_manager.data.history.ScanHistoryRepository
+import com.example.android_manager.model.ScanHistoryEntry
+import com.example.android_manager.model.ScanStatus
+import com.example.android_manager.model.ScanType
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -82,6 +86,7 @@ fun RiskAssessmentScreen(
     val riskRepo = remember { RiskAssessmentRepository(context) }
     val appRepo = remember { AppRepository(context) }
     val apkScannerRepo = remember { ApkScannerRepository(context) }
+    val historyRepo = remember { ScanHistoryRepository(context) }
 
     var selectedTab by remember { mutableStateOf(RiskScreenTab.TARGET_AUDIT) }
     var installedApps by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
@@ -93,6 +98,71 @@ fun RiskAssessmentScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showAppPicker by remember { mutableStateOf(false) }
+
+    suspend fun saveAssessmentToHistory(
+        assessment: RiskAssessment,
+        scanType: ScanType,
+        durationMs: Long = 0L
+    ) {
+        val findings = assessment.contributingFactors.map { factor ->
+            com.example.android_manager.model.VulnerabilityFinding(
+                name = factor.title,
+                severity = factor.severity,
+                affectedComponent = factor.category.displayName,
+                evidence = factor.evidence ?: factor.description,
+                impact = factor.description,
+                recommendation = assessment.recommendations
+                    .find {
+                        it.title.contains(factor.title, ignoreCase = true)
+                    }
+                    ?.action
+                    ?: "Review application privileges and minimize attack surface."
+            )
+        }
+
+        val entry = ScanHistoryEntry(
+            scanType = scanType,
+            targetName = assessment.targetName,
+            packageName = assessment.packageName,
+            versionName = assessment.versionName ?: "",
+            versionCode = 0L,
+            minSdk = 0,
+            targetSdk = 0,
+            riskScore = assessment.overallScore,
+            riskLevel = assessment.overallLevel,
+            status = when {
+                assessment.overallLevel == com.example.android_manager.model.RiskLevel.CRITICAL ||
+                        assessment.overallLevel == com.example.android_manager.model.RiskLevel.HIGH ->
+                    ScanStatus.THREAT_DETECTED
+
+                assessment.overallLevel == com.example.android_manager.model.RiskLevel.MEDIUM ->
+                    ScanStatus.SUSPICIOUS
+
+                else -> ScanStatus.CLEAN
+            },
+            findingsCount = findings.size,
+            criticalCount = findings.count {
+                it.severity == com.example.android_manager.model.RiskLevel.CRITICAL
+            },
+            highCount = findings.count {
+                it.severity == com.example.android_manager.model.RiskLevel.HIGH
+            },
+            mediumCount = findings.count {
+                it.severity == com.example.android_manager.model.RiskLevel.MEDIUM
+            },
+            lowCount = findings.count {
+                it.severity == com.example.android_manager.model.RiskLevel.LOW
+            },
+            findings = findings,
+            timestamp = assessment.timestamp,
+            scanDurationMs = durationMs
+        )
+
+        withContext(Dispatchers.IO) {
+            historyRepo.saveScan(entry)
+        }
+    }
+
 
     val apkPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -108,7 +178,13 @@ fun RiskAssessmentScreen(
                     val assessment = withContext(Dispatchers.IO) {
                         riskRepo.assessApkResult(scanResult)
                     }
+
                     currentAssessment = assessment
+
+                    saveAssessmentToHistory(
+                        assessment = assessment,
+                        scanType = ScanType.APK_FILE
+                    )
                     selectedTab = RiskScreenTab.TARGET_AUDIT
                 } catch (e: Exception) {
                     errorMessage = e.message ?: "Failed to evaluate selected APK file."
@@ -119,6 +195,7 @@ fun RiskAssessmentScreen(
         }
     }
 
+
     suspend fun loadTargetAssessment(targetPkg: String) {
         isLoading = true
         errorMessage = null
@@ -126,7 +203,13 @@ fun RiskAssessmentScreen(
             val assessment = withContext(Dispatchers.IO) {
                 riskRepo.assessInstalledApp(targetPkg)
             }
+
             currentAssessment = assessment
+
+            saveAssessmentToHistory(
+                assessment = assessment,
+                scanType = ScanType.INSTALLED_APP
+            )
         } catch (e: Exception) {
             errorMessage = e.message ?: "Failed to assess risk for $targetPkg"
         } finally {
@@ -156,9 +239,7 @@ fun RiskAssessmentScreen(
         installedApps = apps
 
         val initialTarget = initialPackageName
-            ?: apps.firstOrNull { it.packageName == context.packageName }?.packageName
             ?: apps.firstOrNull { !it.isSystemApp }?.packageName
-            ?: apps.firstOrNull()?.packageName
 
         if (initialTarget != null) {
             selectedApp = apps.find { it.packageName == initialTarget }

@@ -96,31 +96,44 @@ fun SecurityReportScreen(
     var selectedSeverityFilter by remember { mutableStateOf<RiskLevel?>(null) }
 
     // Load active report from cache or synthesize from parameters
+
+
     LaunchedEffect(targetPackageName, historyId) {
         isLoading = true
         errorMessage = null
 
-        withContext(Dispatchers.IO) {
-            try {
-                val cached = SecurityReportRepository.getActiveReport()
-                if (cached != null) {
-                    report = cached
-                } else if (historyId != null && historyId > 0L) {
-                    report = repository.buildFromHistoryId(historyId)
-                } else if (!targetPackageName.isNullOrBlank()) {
-                    report = repository.buildFromInstalledApp(targetPackageName)
-                } else {
-                    // Fallback to APVM self package or first available app
-                    val selfPkg = context.packageName
-                    report = repository.buildFromInstalledApp(selfPkg)
+        try {
+            val loadedReport = withContext(Dispatchers.IO) {
+                when {
+                    historyId != null && historyId > 0L -> {
+                        repository.buildFromHistoryId(historyId)
+                    }
+
+                    !targetPackageName.isNullOrBlank() -> {
+                        repository.buildFromInstalledApp(targetPackageName)
+                    }
+
+                    else -> {
+                        SecurityReportRepository.getActiveReport()
+                    }
                 }
-            } catch (e: Exception) {
-                errorMessage = e.message ?: "Failed to assemble security report."
-            } finally {
-                isLoading = false
             }
+
+            report = loadedReport
+
+            if (loadedReport == null) {
+                errorMessage =
+                    "No report available. Run an assessment or select a saved scan from History."
+            }
+        } catch (e: Exception) {
+            errorMessage = e.message
+                ?: "Failed to assemble security report."
+        } finally {
+            isLoading = false
         }
     }
+
+
 
     Column(
         modifier = modifier

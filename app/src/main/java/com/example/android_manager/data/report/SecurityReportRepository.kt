@@ -1,3 +1,4 @@
+
 package com.example.android_manager.data.report
 
 import android.content.Context
@@ -23,8 +24,8 @@ import com.example.android_manager.model.SecurityReport
 import com.example.android_manager.model.VulnerabilityFinding
 
 /**
- * Repository orchestrating the generation, caching, and retrieval of comprehensive
- * security reports across APK scans, installed applications, and historical audit logs.
+ * Generates and reconstructs security reports for APK scans,
+ * installed applications, and historical scans.
  */
 class SecurityReportRepository(
     private val context: Context
@@ -36,30 +37,22 @@ class SecurityReportRepository(
     private val historyRepo = ScanHistoryRepository(context)
 
     companion object {
+        @Volatile
         private var activeReport: SecurityReport? = null
 
-        /**
-         * Sets the active report in memory for immediate access by the report screen.
-         */
         fun setActiveReport(report: SecurityReport) {
             activeReport = report
         }
 
-        /**
-         * Gets the active report currently loaded in memory.
-         */
         fun getActiveReport(): SecurityReport? = activeReport
 
-        /**
-         * Clears the active report from memory.
-         */
         fun clearActiveReport() {
             activeReport = null
         }
     }
 
     /**
-     * Synthesizes an APK analysis result and risk assessment into a comprehensive SecurityReport.
+     * Creates a report from an APK analysis result and its risk assessment.
      */
     fun buildFromApkAnalysis(
         result: ApkAnalysisResult,
@@ -73,16 +66,22 @@ class SecurityReportRepository(
         val mediumCount = findings.count { it.severity == RiskLevel.MEDIUM }
         val lowCount = findings.count { it.severity == RiskLevel.LOW }
 
-        // Extract dangerous permissions from findings evidence where present
+        // Extract permission entries only from findings explicitly identified
+        // as dangerous-permission findings. Evidence formats may vary by scanner.
         val dangerousPermEntries = findings
-            .filter { it.name.contains("Dangerous Permission", ignoreCase = true) }
-            .flatMap { it.evidence.lines() }
-            .filter { it.isNotBlank() }
+            .filter {
+                it.name.contains("Dangerous Permission", ignoreCase = true)
+            }
+            .flatMap { finding ->
+                finding.evidence.lines()
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+            }
             .distinct()
-            .map { permName ->
+            .map { permissionName ->
                 PermissionEntry(
-                    name = permName.substringAfterLast("."),
-                    description = "Dangerous runtime permission requested by APK manifest.",
+                    name = permissionName.substringAfterLast("."),
+                    description = "Dangerous permission reported by APK analysis.",
                     category = "DANGEROUS"
                 )
             }
@@ -101,7 +100,9 @@ class SecurityReportRepository(
         )
 
         val metadata = ReportAppMetadata(
-            appName = apkInfo.appName?.takeIf { it.isNotBlank() } ?: apkInfo.packageName,
+            appName = apkInfo.appName
+                ?.takeIf { it.isNotBlank() }
+                ?: apkInfo.packageName,
             packageName = apkInfo.packageName,
             versionName = apkInfo.versionName,
             versionCode = apkInfo.versionCode,
@@ -125,49 +126,81 @@ class SecurityReportRepository(
     }
 
     /**
-     * Directly analyzes an APK from a content URI and produces a complete SecurityReport.
+     * Scans an APK supplied through a content URI and creates a report.
      */
     fun buildFromApkUri(uri: Uri): SecurityReport {
         val analysisResult = scannerRepo.scanApk(uri)
         val riskAssessment = riskRepo.assessApkResult(analysisResult)
-        return buildFromApkAnalysis(analysisResult, riskAssessment)
+
+        return buildFromApkAnalysis(
+            result = analysisResult,
+            risk = riskAssessment
+        )
     }
 
     /**
-     * Generates a complete SecurityReport for an installed package on the device.
+     * Generates a report for an installed application.
      */
     fun buildFromInstalledApp(packageName: String): SecurityReport {
         val pm = context.packageManager
+
         val packageInfo = try {
             pm.getPackageInfo(packageName, 0)
-        } catch (_: Exception) {
-            null
+        } catch (e: Exception) {
+            throw IllegalArgumentException(
+                "Unable to retrieve package information for $packageName.",
+                e
+            )
         }
 
-        val appInfo = packageInfo?.applicationInfo
-        val appLabel = appInfo?.loadLabel(pm)?.toString() ?: packageName
-        val isSystem = (appInfo?.flags?.let { it and ApplicationInfo.FLAG_SYSTEM != 0 }) ?: false
-        val minSdk = if (android.os.Build.VERSION.SDK_INT >= 24) appInfo?.minSdkVersion else 21
+        val appInfo = packageInfo.applicationInfo
+        val appLabel = appInfo?.loadLabel(pm)?.toString()
+            ?: packageName
+
+        val isSystem = appInfo?.let {
+            it.flags and ApplicationInfo.FLAG_SYSTEM != 0
+        } ?: false
+
+        val minSdk = if (android.os.Build.VERSION.SDK_INT >= 24) {
+            appInfo?.minSdkVersion
+        } else {
+            21
+        }
+
         val targetSdk = appInfo?.targetSdkVersion
+
         val versionCode = if (android.os.Build.VERSION.SDK_INT >= 28) {
-            packageInfo?.longVersionCode
+            packageInfo.longVersionCode
         } else {
             @Suppress("DEPRECATION")
-            packageInfo?.versionCode?.toLong()
+            packageInfo.versionCode.toLong()
         }
 
         val targetApp = AppInfo(
             name = appLabel,
             packageName = packageName,
-            versionName = packageInfo?.versionName,
+            versionName = packageInfo.versionName,
             isSystemApp = isSystem
         )
 
-        val permissions = permRepo.getAppPermissions(listOf(targetApp)).firstOrNull()?.permissions ?: emptyList()
-        val dangerousPerms = permissions.filter { it.category == "DANGEROUS" }
-        val specialPerms = permissions.filter { it.category == "SPECIAL" }
+        val permissions = permRepo
+            .getAppPermissions(listOf(targetApp))
+            .firstOrNull()
+            ?.permissions
+            ?: emptyList()
+
+        val dangerousPerms = permissions.filter {
+            it.category == "DANGEROUS"
+        }
+
+        val specialPerms = permissions.filter {
+            it.category == "SPECIAL"
+        }
+
         val riskAssessment = riskRepo.assessInstalledApp(packageName)
 
+        // These are security findings derived from assessment factors.
+        // A finding is not necessarily a confirmed exploitable vulnerability.
         val findings = riskAssessment.contributingFactors.map { factor ->
             VulnerabilityFinding(
                 name = factor.title,
@@ -175,15 +208,30 @@ class SecurityReportRepository(
                 affectedComponent = factor.category.displayName,
                 evidence = factor.evidence ?: factor.description,
                 impact = factor.description,
-                recommendation = riskAssessment.recommendations.find { it.title.contains(factor.title, ignoreCase = true) }?.action
+                recommendation = riskAssessment.recommendations
+                    .find {
+                        it.title.contains(
+                            factor.title,
+                            ignoreCase = true
+                        )
+                    }
+                    ?.action
                     ?: "Review application privileges and minimize attack surface."
             )
         }
 
-        val criticalCount = findings.count { it.severity == RiskLevel.CRITICAL }
-        val highCount = findings.count { it.severity == RiskLevel.HIGH }
-        val mediumCount = findings.count { it.severity == RiskLevel.MEDIUM }
-        val lowCount = findings.count { it.severity == RiskLevel.LOW }
+        val criticalCount = findings.count {
+            it.severity == RiskLevel.CRITICAL
+        }
+        val highCount = findings.count {
+            it.severity == RiskLevel.HIGH
+        }
+        val mediumCount = findings.count {
+            it.severity == RiskLevel.MEDIUM
+        }
+        val lowCount = findings.count {
+            it.severity == RiskLevel.LOW
+        }
 
         val summary = createExecutiveSummary(
             overallScore = riskAssessment.overallScore,
@@ -195,13 +243,14 @@ class SecurityReportRepository(
             findingsCount = findings.size,
             dangerousPermCount = dangerousPerms.size,
             specialPermCount = specialPerms.size,
-            exportedComponentCount = riskAssessment.componentBreakdown.totalExported
+            exportedComponentCount =
+                riskAssessment.componentBreakdown.totalExported
         )
 
         val metadata = ReportAppMetadata(
             appName = appLabel,
             packageName = packageName,
-            versionName = packageInfo?.versionName,
+            versionName = packageInfo.versionName,
             versionCode = versionCode,
             minSdk = minSdk,
             targetSdk = targetSdk,
@@ -225,34 +274,64 @@ class SecurityReportRepository(
     }
 
     /**
-     * Reconstructs a complete SecurityReport from a persisted ScanHistory entry by ID.
+     * Reconstructs a report from a persisted scan-history ID.
      */
-    suspend fun buildFromHistoryId(historyId: Long): SecurityReport? {
-        val entry = historyRepo.getHistoryById(historyId) ?: return null
+    suspend fun buildFromHistoryId(
+        historyId: Long
+    ): SecurityReport? {
+        val entry = historyRepo.getHistoryById(historyId)
+            ?: return null
+
         return buildFromHistoryEntry(entry)
     }
 
     /**
-     * Reconstructs a complete SecurityReport from a persisted ScanHistoryEntry domain object.
+     * Reconstructs a report from a persisted scan-history entry.
+     *
+     * The original history schema does not preserve individual risk-category
+     * scores. Those category scores are therefore marked as unavailable
+     * numerically rather than estimated from finding counts.
      */
-    fun buildFromHistoryEntry(entry: ScanHistoryEntry): SecurityReport {
+    fun buildFromHistoryEntry(
+        entry: ScanHistoryEntry
+    ): SecurityReport {
         val dangerousPermEntries = entry.findings
-            .filter { it.name.contains("Dangerous Permission", ignoreCase = true) }
-            .flatMap { it.evidence.lines() }
-            .filter { it.isNotBlank() }
+            .filter {
+                it.name.contains("Dangerous Permission", ignoreCase = true)
+            }
+            .flatMap { finding ->
+                finding.evidence.lines()
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+            }
             .distinct()
-            .map { permName ->
+            .map { permissionName ->
                 PermissionEntry(
-                    name = permName.substringAfterLast("."),
+                    name = permissionName.substringAfterLast("."),
                     description = "Dangerous permission detected in scan audit.",
                     category = "DANGEROUS"
                 )
             }
 
-        val expAct = entry.findings.count { it.name.contains("Activity", ignoreCase = true) && it.name.contains("Exported", ignoreCase = true) }
-        val expSrv = entry.findings.count { it.name.contains("Service", ignoreCase = true) && it.name.contains("Exported", ignoreCase = true) }
-        val expRcv = entry.findings.count { it.name.contains("Receiver", ignoreCase = true) && it.name.contains("Exported", ignoreCase = true) }
-        val expPrv = entry.findings.count { it.name.contains("Provider", ignoreCase = true) && it.name.contains("Exported", ignoreCase = true) }
+        val expAct = entry.findings.count {
+            it.name.contains("Activity", ignoreCase = true) &&
+                    it.name.contains("Exported", ignoreCase = true)
+        }
+
+        val expSrv = entry.findings.count {
+            it.name.contains("Service", ignoreCase = true) &&
+                    it.name.contains("Exported", ignoreCase = true)
+        }
+
+        val expRcv = entry.findings.count {
+            it.name.contains("Receiver", ignoreCase = true) &&
+                    it.name.contains("Exported", ignoreCase = true)
+        }
+
+        val expPrv = entry.findings.count {
+            it.name.contains("Provider", ignoreCase = true) &&
+                    it.name.contains("Exported", ignoreCase = true)
+        }
 
         val compBreakdown = ComponentExposureBreakdown(
             totalExportedActivities = expAct,
@@ -270,11 +349,10 @@ class SecurityReportRepository(
                     priority = finding.severity,
                     targetComponent = finding.affectedComponent
                 )
-            } else null
+            } else {
+                null
+            }
         }
-
-        val permRiskScore = if (entry.findingsCount > 0) (dangerousPermEntries.size * 10).coerceIn(0, 100) else 0
-        val compRiskScore = (compBreakdown.totalExported * 15).coerceIn(0, 100)
 
         val riskAssessment = RiskAssessment(
             targetName = entry.targetName,
@@ -282,14 +360,20 @@ class SecurityReportRepository(
             versionName = entry.versionName,
             overallScore = entry.riskScore,
             overallLevel = entry.riskLevel,
-            permissionRisk = permRiskScore,
-            permissionRiskLevel = RiskLevel.fromScore(permRiskScore),
-            vulnerabilityRisk = entry.riskScore,
-            vulnerabilityRiskLevel = entry.riskLevel,
-            componentExposureRisk = compRiskScore,
-            componentExposureRiskLevel = RiskLevel.fromScore(compRiskScore),
+
+            // Historical records do not store the original category scores.
+            permissionRisk = 0,
+            permissionRiskLevel = RiskLevel.LOW,
+
+            vulnerabilityRisk = null,
+            vulnerabilityRiskLevel = null,
+
+            componentExposureRisk = 0,
+            componentExposureRiskLevel = RiskLevel.LOW,
+
             configurationRisk = 0,
             configurationRiskLevel = RiskLevel.LOW,
+
             componentBreakdown = compBreakdown,
             recommendations = recommendations,
             timestamp = entry.timestamp
@@ -331,6 +415,9 @@ class SecurityReportRepository(
         )
     }
 
+    /**
+     * Creates the executive summary displayed in the report.
+     */
     private fun createExecutiveSummary(
         overallScore: Int,
         overallLevel: RiskLevel,
@@ -344,10 +431,17 @@ class SecurityReportRepository(
         exportedComponentCount: Int
     ): ReportExecutiveSummary {
         val narrative = when (overallLevel) {
-            RiskLevel.CRITICAL -> "Critical security threats detected. Immediate hardening required prior to deployment."
-            RiskLevel.HIGH -> "High security risk identified. Multiple attack surfaces and sensitive privileges detected."
-            RiskLevel.MEDIUM -> "Moderate security risk detected. Certain configurations and permissions warrant review."
-            RiskLevel.LOW -> "Security posture meets standard baseline. Minimal elevated attack surface identified."
+            RiskLevel.CRITICAL ->
+                "Critical security threats detected. Immediate hardening required prior to deployment."
+
+            RiskLevel.HIGH ->
+                "High security risk identified. Multiple attack surfaces and sensitive privileges detected."
+
+            RiskLevel.MEDIUM ->
+                "Moderate security risk detected. Certain configurations and permissions warrant review."
+
+            RiskLevel.LOW ->
+                "Security posture meets standard baseline. Minimal elevated attack surface identified."
         }
 
         return ReportExecutiveSummary(
@@ -367,49 +461,93 @@ class SecurityReportRepository(
     }
 
     /**
-     * Formats a SecurityReport into a human-readable Markdown summary suitable for export and sharing.
+     * Formats a security report as Markdown for export or sharing.
      */
-    fun formatReportForExport(report: SecurityReport): String {
-        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
-        val formattedDate = dateFormat.format(java.util.Date(report.metadata.scanTimestamp))
+    fun formatReportForExport(
+        report: SecurityReport
+    ): String {
+        val dateFormat = java.text.SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss",
+            java.util.Locale.getDefault()
+        )
+
+        val formattedDate = dateFormat.format(
+            java.util.Date(report.metadata.scanTimestamp)
+        )
 
         val sb = StringBuilder()
+
         sb.appendLine("# APVM Security Audit Report")
-        sb.appendLine("Target: ${report.metadata.appName} (${report.metadata.packageName})")
-        sb.appendLine("Version: ${report.metadata.versionName ?: "N/A"} (Target SDK: ${report.metadata.targetSdk ?: "N/A"})")
+        sb.appendLine(
+            "Target: ${report.metadata.appName} (${report.metadata.packageName})"
+        )
+        sb.appendLine(
+            "Version: ${report.metadata.versionName ?: "N/A"} " +
+                    "(Target SDK: ${report.metadata.targetSdk ?: "N/A"})"
+        )
         sb.appendLine("Scan Type: ${report.metadata.scanType.displayName}")
         sb.appendLine("Date: $formattedDate")
         sb.appendLine()
+
         sb.appendLine("---")
         sb.appendLine("## Executive Summary")
-        sb.appendLine("Overall Risk Score: ${report.summary.overallScore}/100 [${report.summary.overallLevel.name}]")
+        sb.appendLine(
+            "Overall Risk Score: ${report.summary.overallScore}/100 " +
+                    "[${report.summary.overallLevel.name}]"
+        )
         sb.appendLine("Posture: ${report.summary.summaryNarrative}")
-        sb.appendLine("Findings Breakdown: ${report.summary.criticalCount} Critical, ${report.summary.highCount} High, ${report.summary.mediumCount} Medium, ${report.summary.lowCount} Low")
-        sb.appendLine("Dangerous Permissions: ${report.summary.dangerousPermissionsCount}")
-        sb.appendLine("Exported Components: ${report.summary.totalExportedComponents}")
+        sb.appendLine(
+            "Findings Breakdown: ${report.summary.criticalCount} Critical, " +
+                    "${report.summary.highCount} High, " +
+                    "${report.summary.mediumCount} Medium, " +
+                    "${report.summary.lowCount} Low"
+        )
+        sb.appendLine(
+            "Dangerous Permissions: ${report.summary.dangerousPermissionsCount}"
+        )
+        sb.appendLine(
+            "Exported Components: ${report.summary.totalExportedComponents}"
+        )
         sb.appendLine()
 
         if (report.vulnerabilityFindings.isNotEmpty()) {
             sb.appendLine("---")
-            sb.appendLine("## Vulnerability Findings (${report.vulnerabilityFindings.size})")
-            report.vulnerabilityFindings.forEachIndexed { index, vuln ->
-                sb.appendLine("${index + 1}. [${vuln.severity.name}] ${vuln.name}")
-                if (!vuln.affectedComponent.isNullOrBlank()) {
-                    sb.appendLine("   - Component: ${vuln.affectedComponent}")
+            sb.appendLine(
+                "## Security Findings (${report.vulnerabilityFindings.size})"
+            )
+
+            report.vulnerabilityFindings.forEachIndexed { index, finding ->
+                sb.appendLine(
+                    "${index + 1}. [${finding.severity.name}] ${finding.name}"
+                )
+
+                if (!finding.affectedComponent.isNullOrBlank()) {
+                    sb.appendLine(
+                        "   - Component: ${finding.affectedComponent}"
+                    )
                 }
-                sb.appendLine("   - Evidence: ${vuln.evidence.replace("\n", " ")}")
-                sb.appendLine("   - Impact: ${vuln.impact}")
-                sb.appendLine("   - Mitigation: ${vuln.recommendation}")
+
+                sb.appendLine(
+                    "   - Evidence: ${finding.evidence.replace("\n", " ")}"
+                )
+                sb.appendLine("   - Impact: ${finding.impact}")
+                sb.appendLine("   - Mitigation: ${finding.recommendation}")
                 sb.appendLine()
             }
         }
 
         if (report.detectedCombinations.isNotEmpty()) {
             sb.appendLine("---")
-            sb.appendLine("## Dangerous Permission Combinations (${report.detectedCombinations.size})")
+            sb.appendLine(
+                "## Dangerous Permission Combinations " +
+                        "(${report.detectedCombinations.size})"
+            )
+
             report.detectedCombinations.forEach { combo ->
                 sb.appendLine("- [${combo.severity.name}] ${combo.name}")
-                sb.appendLine("  Permissions: ${combo.permissions.joinToString(", ")}")
+                sb.appendLine(
+                    "  Permissions: ${combo.permissions.joinToString(", ")}"
+                )
                 sb.appendLine("  Risk: ${combo.dangerSummary}")
                 sb.appendLine()
             }
@@ -418,14 +556,21 @@ class SecurityReportRepository(
         if (report.recommendations.isNotEmpty()) {
             sb.appendLine("---")
             sb.appendLine("## Actionable Mitigation Roadmap")
-            report.recommendations.forEachIndexed { index, rec ->
-                sb.appendLine("${index + 1}. [${rec.priority.name}] ${rec.title}")
-                sb.appendLine("   Action: ${rec.action}")
+
+            report.recommendations.forEachIndexed { index, recommendation ->
+                sb.appendLine(
+                    "${index + 1}. [${recommendation.priority.name}] " +
+                            recommendation.title
+                )
+                sb.appendLine("   Action: ${recommendation.action}")
             }
         }
 
         sb.appendLine()
-        sb.appendLine("Generated by APVM (Android Process, Permission & Vulnerability Manager)")
+        sb.appendLine(
+            "Generated by APVM (Android Process, Permission & Vulnerability Manager)"
+        )
+
         return sb.toString()
     }
 }
