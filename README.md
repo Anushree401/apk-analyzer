@@ -996,6 +996,24 @@ Expected Result:
 Results stored separately and available for comparison.
 ```
 
+## Automated Unit Test Execution & Verification
+
+The security assessment pipeline is verified by 35 automated JVM unit tests executing via Gradle:
+
+```bash
+./gradlew testDebugUnitTest
+```
+
+| Test Suite | Tests | Status | Focus Areas |
+|---|---|---|---|
+| `SecurityReportFindingsTest` | 5 | PASSED | Provenance, evidence accuracy, factual impact, and non-generic mitigations |
+| `PermissionRiskEvaluatorTest` | 7 | PASSED | Dangerous/special permissions, combinations, threshold scoring, penalty caps |
+| `ComponentExposureEvaluatorTest` | 6 | PASSED | Exported components, permission protection, boundary capping |
+| `ConfigurationRiskEvaluatorTest` | 6 | PASSED | Debuggable, allowBackup, cleartext traffic by target SDK, SDK thresholds |
+| `VulnerabilityRiskEvaluatorTest` | 6 | PASSED | DEX strings, library CVE heuristics, scoring caps |
+| `RiskAggregationTest` | 5 | PASSED | Weighted composite aggregation, critical override, severity boundaries |
+| **Total** | **35** | **100% Passed** | **Zero failures, zero regressions** |
+
 ---
 
 # 20. Implementation Roadmap

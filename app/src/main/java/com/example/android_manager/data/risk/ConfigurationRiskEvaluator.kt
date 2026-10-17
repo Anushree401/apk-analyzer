@@ -89,7 +89,7 @@ class ConfigurationRiskEvaluator {
                     severity = RiskLevel.HIGH,
                     category = RiskCategory.CONFIGURATION,
                     scorePenalty = cleartextPenalty,
-                    evidence = "FLAG_USES_CLEARTEXT_TRAFFIC == true"
+                    evidence = if (hasCleartextFlag) "FLAG_USES_CLEARTEXT_TRAFFIC == true" else "Default cleartext permitted for targetSdkVersion $effectiveTargetSdk (< 28)"
                 )
             )
         }

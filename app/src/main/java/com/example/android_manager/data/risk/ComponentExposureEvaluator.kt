@@ -131,7 +131,7 @@ class ComponentExposureEvaluator {
                 RiskFactor(
                     id = "EXP_ACT_SURFACE",
                     title = "Broad Activity Attack Surface",
-                    description = "$exportedActivities activities are exported to third-party intents.",
+                    description = "$exportedActivities activities are exported to third-party intents without restriction, exposing internal UI screens to intent manipulation, UI redressing, or state injection.",
                     severity = if (exportedActivities > 8) RiskLevel.HIGH else RiskLevel.MEDIUM,
                     category = RiskCategory.COMPONENT_EXPOSURE,
                     scorePenalty = actPenalty,

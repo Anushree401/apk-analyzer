@@ -102,23 +102,13 @@ fun RiskAssessmentScreen(
     suspend fun saveAssessmentToHistory(
         assessment: RiskAssessment,
         scanType: ScanType,
-        durationMs: Long = 0L
+        durationMs: Long = 0L,
+        extraFindings: List<com.example.android_manager.model.VulnerabilityFinding> = emptyList()
     ) {
-        val findings = assessment.contributingFactors.map { factor ->
-            com.example.android_manager.model.VulnerabilityFinding(
-                name = factor.title,
-                severity = factor.severity,
-                affectedComponent = factor.category.displayName,
-                evidence = factor.evidence ?: factor.description,
-                impact = factor.description,
-                recommendation = assessment.recommendations
-                    .find {
-                        it.title.contains(factor.title, ignoreCase = true)
-                    }
-                    ?.action
-                    ?: "Review application privileges and minimize attack surface."
-            )
-        }
+        val findings = com.example.android_manager.data.report.SecurityReportRepository.buildUnifiedFindings(
+            assessment = assessment,
+            extraFindings = extraFindings
+        )
 
         val entry = ScanHistoryEntry(
             scanType = scanType,

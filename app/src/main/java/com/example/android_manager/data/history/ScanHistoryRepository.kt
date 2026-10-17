@@ -69,10 +69,22 @@ class ScanHistoryRepository(
         risk: RiskAssessment,
         durationMs: Long = 0L
     ): Long {
-        val criticalCount = result.findings.count { it.severity == RiskLevel.CRITICAL }
-        val highCount = result.findings.count { it.severity == RiskLevel.HIGH }
-        val mediumCount = result.findings.count { it.severity == RiskLevel.MEDIUM }
-        val lowCount = result.findings.count { it.severity == RiskLevel.LOW }
+        val dexFindings = result.findings.filter { finding ->
+            finding.name.contains("WebView", ignoreCase = true) ||
+            finding.name.contains("JavaScript", ignoreCase = true) ||
+            finding.name.contains("DEX", ignoreCase = true) ||
+            finding.name.contains("Dependency", ignoreCase = true) ||
+            finding.name.contains("Vulnerability", ignoreCase = true)
+        }
+        val unifiedFindings = com.example.android_manager.data.report.SecurityReportRepository.buildUnifiedFindings(
+            assessment = risk,
+            extraFindings = dexFindings
+        )
+
+        val criticalCount = unifiedFindings.count { it.severity == RiskLevel.CRITICAL }
+        val highCount = unifiedFindings.count { it.severity == RiskLevel.HIGH }
+        val mediumCount = unifiedFindings.count { it.severity == RiskLevel.MEDIUM }
+        val lowCount = unifiedFindings.count { it.severity == RiskLevel.LOW }
 
         val status = when {
             criticalCount > 0 || highCount > 0 -> ScanStatus.THREAT_DETECTED
@@ -93,12 +105,12 @@ class ScanHistoryRepository(
             riskScore = risk.overallScore,
             riskLevel = risk.overallLevel,
             status = status,
-            findingsCount = result.findings.size,
+            findingsCount = unifiedFindings.size,
             criticalCount = criticalCount,
             highCount = highCount,
             mediumCount = mediumCount,
             lowCount = lowCount,
-            findings = result.findings,
+            findings = unifiedFindings,
             timestamp = System.currentTimeMillis(),
             scanDurationMs = durationMs
         )

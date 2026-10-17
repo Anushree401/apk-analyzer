@@ -16,6 +16,7 @@ import com.example.android_manager.model.ComponentExposureBreakdown
 import com.example.android_manager.model.ReportAppMetadata
 import com.example.android_manager.model.ReportExecutiveSummary
 import com.example.android_manager.model.RiskAssessment
+import com.example.android_manager.model.RiskCategory
 import com.example.android_manager.model.RiskLevel
 import com.example.android_manager.model.RiskRecommendation
 import com.example.android_manager.model.ScanHistoryEntry
@@ -49,6 +50,141 @@ class SecurityReportRepository(
         fun clearActiveReport() {
             activeReport = null
         }
+
+        /**
+         * Resolves a targeted, actionable mitigation for a security factor or finding.
+         * Eliminates generic fallback messages.
+         */
+        fun resolveRecommendation(
+            factorId: String,
+            title: String,
+            category: RiskCategory,
+            evidence: String? = null
+        ): String {
+            // 1. Permission combinations
+            if (factorId.startsWith("COMB_") || title.startsWith("Risky Combo:", ignoreCase = true)) {
+                val comboName = title.removePrefix("Risky Combo:").trim()
+                return when {
+                    comboName.contains("Camera & Audio", ignoreCase = true) ||
+                    comboName.contains("Camera", ignoreCase = true) && comboName.contains("Audio", ignoreCase = true) ->
+                        "Audit whether both camera and microphone access are required simultaneously. Use system intents (MediaStore.ACTION_IMAGE_CAPTURE) for on-demand media capture to avoid holding persistent hardware permissions."
+
+                    comboName.contains("Audio", ignoreCase = true) ->
+                        "Review the necessity of microphone access alongside internet transmission. Request RECORD_AUDIO dynamically with explicit runtime rationale and visual recording indicators."
+
+                    comboName.contains("Package Installation", ignoreCase = true) ||
+                    comboName.contains("Trojan", ignoreCase = true) ||
+                    comboName.contains("Dropper", ignoreCase = true) ->
+                        "Remove android.permission.REQUEST_INSTALL_PACKAGES. Distribute application updates through verified app stores (Google Play) rather than self-updating unverified binaries."
+
+                    comboName.contains("SMS", ignoreCase = true) ->
+                        "Replace SMS reading permissions with the Google SMS Retriever API or SMS User Consent API to verify phone numbers without accessing user messages."
+
+                    comboName.contains("Geolocation", ignoreCase = true) ||
+                    comboName.contains("Tracking", ignoreCase = true) ->
+                        "Remove ACCESS_BACKGROUND_LOCATION unless continuous background telemetry is indispensable. Rely on foreground service location or coarse location."
+
+                    comboName.contains("Overlay", ignoreCase = true) ||
+                    comboName.contains("Accessibility", ignoreCase = true) ->
+                        "Remove SYSTEM_ALERT_WINDOW and BIND_ACCESSIBILITY_SERVICE unless building a dedicated assistive tool. Avoid UI overlays that can be abused for touch hijacking."
+
+                    comboName.contains("Contact", ignoreCase = true) ->
+                        "Use the system contact picker (Intent.ACTION_PICK) to access only user-selected contacts instead of holding broad READ_CONTACTS and telephony identifiers."
+
+                    comboName.contains("Call Log", ignoreCase = true) ->
+                        "Remove READ_CALL_LOG unless the application is the device's default dialer handler."
+
+                    else ->
+                        "Apply the Principle of Least Privilege: audit required permissions and remove unnecessary privilege combinations."
+                }
+            }
+
+            // 2. Component exposure
+            if (factorId == "EXP_ACT_SURFACE" || title.contains("Broad Activity Attack Surface", ignoreCase = true)) {
+                return "Explicitly set android:exported=\"false\" on all internal activities in AndroidManifest.xml. Only export activities intended as external public entry points (e.g., MAIN/LAUNCHER or Deep Links), and protect sensitive entry points with signature permissions."
+            }
+            if (factorId.startsWith("EXP_SRV") || title.contains("Exported Service", ignoreCase = true)) {
+                return "Declare android:exported=\"false\" on the service or protect it with a custom signature-level permission (android:permission) to prevent unauthorized invocation from third-party apps."
+            }
+            if (factorId.startsWith("EXP_RCV") || title.contains("Broadcast Receiver", ignoreCase = true)) {
+                return "Declare android:exported=\"false\" or enforce a signature permission requirement on the receiver to prevent unsolicited external broadcasts."
+            }
+            if (factorId.startsWith("EXP_PRV") || title.contains("Content Provider", ignoreCase = true)) {
+                return "Enforce custom signature-level readPermission and writePermission attributes on the content provider, or set android:exported=\"false\" if external data sharing is not required."
+            }
+
+            // 3. Configuration issues
+            if (factorId == "CFG_DEBUGGABLE" || title.contains("Debuggable", ignoreCase = true)) {
+                return "Set android:debuggable=\"false\" in AndroidManifest.xml and verify the release build type does not enable debug mode."
+            }
+            if (factorId == "CFG_ALLOW_BACKUP" || title.contains("Backup", ignoreCase = true)) {
+                return "Set android:allowBackup=\"false\" in AndroidManifest.xml to protect sensitive SQLite databases and SharedPreferences from ADB backups."
+            }
+            if (factorId == "CFG_CLEARTEXT" || title.contains("Cleartext", ignoreCase = true)) {
+                return "Configure a network_security_config.xml with cleartextTrafficPermitted=\"false\" to enforce HTTPS encryption for all network traffic."
+            }
+            if (factorId == "CFG_OUTDATED_TARGET_SDK" || title.contains("Target SDK", ignoreCase = true)) {
+                return "Update targetSdkVersion to Android 14+ (API level 34+) to inherit modern platform security sandboxing, scoped storage, and intent-filter restrictions."
+            }
+            if (factorId == "CFG_OUTDATED_MIN_SDK" || title.contains("Min SDK", ignoreCase = true)) {
+                return "Increase minSdkVersion to at least API 23 (Android 6.0) to ensure runtime permission enforcement on all target devices."
+            }
+
+            // 4. Special and dangerous permissions
+            if (factorId.startsWith("SPEC_") || title.startsWith("Special Permission:", ignoreCase = true)) {
+                val perm = evidence ?: title.substringAfter("Special Permission:").trim()
+                return "Audit the business requirement for elevated system permission '$perm'. Replace with standard Android framework APIs or remove."
+            }
+            if (factorId.startsWith("DANG_") || title.startsWith("Dangerous Permission:", ignoreCase = true)) {
+                val perm = evidence ?: title.substringAfter("Dangerous Permission:").trim()
+                return "Audit necessity of '$perm'. Request permission only at the moment of use with clear in-app justification, and handle graceful fallback if denied."
+            }
+
+            // 5. DEX analysis
+            if (title.contains("WebView", ignoreCase = true)) {
+                return "Review WebView configuration: disable local file access (setAllowFileAccess(false)), disable content URL access, and enforce HTTPS URL loading."
+            }
+            if (title.contains("JavaScript Enabled", ignoreCase = true)) {
+                return "Disable JavaScript (setJavaScriptEnabled(false)) unless required, and sanitize all input to prevent Cross-Site Scripting (XSS)."
+            }
+            if (title.contains("JavaScript Interface", ignoreCase = true)) {
+                return "Ensure all methods exposed via @JavascriptInterface perform strict origin checks and input validation, and only expose them to trusted origins."
+            }
+
+            return "Review application configuration and apply the Principle of Least Privilege to minimize exposed attack surface."
+        }
+
+        /**
+         * Builds a canonical, deduplicated list of findings from a RiskAssessment
+         * and any scanner-specific findings.
+         */
+        fun buildUnifiedFindings(
+            assessment: RiskAssessment,
+            extraFindings: List<VulnerabilityFinding> = emptyList()
+        ): List<VulnerabilityFinding> {
+            val factorFindings = assessment.contributingFactors.map { factor ->
+                VulnerabilityFinding(
+                    name = factor.title,
+                    severity = factor.severity,
+                    affectedComponent = factor.category.displayName,
+                    evidence = factor.evidence ?: factor.description,
+                    impact = factor.description,
+                    recommendation = resolveRecommendation(
+                        factorId = factor.id,
+                        title = factor.title,
+                        category = factor.category,
+                        evidence = factor.evidence
+                    )
+                )
+            }
+
+            // Filter out redundant raw component findings from extraFindings if already represented by factors
+            val filteredExtras = extraFindings.filter { extra ->
+                factorFindings.none { factor -> factor.name.equals(extra.name, ignoreCase = true) }
+            }
+
+            return (factorFindings + filteredExtras).sortedByDescending { it.severity.ordinal }
+        }
     }
 
     /**
@@ -59,31 +195,49 @@ class SecurityReportRepository(
         risk: RiskAssessment
     ): SecurityReport {
         val apkInfo = result.apkInfo
-        val findings = result.findings
+
+        // Filter DEX string analysis and specialized scanner findings
+        val dexFindings = result.findings.filter { finding ->
+            finding.name.contains("WebView", ignoreCase = true) ||
+            finding.name.contains("JavaScript", ignoreCase = true) ||
+            finding.name.contains("DEX", ignoreCase = true) ||
+            finding.name.contains("Dependency", ignoreCase = true) ||
+            finding.name.contains("Vulnerability", ignoreCase = true)
+        }
+
+        val findings = buildUnifiedFindings(risk, extraFindings = dexFindings)
 
         val criticalCount = findings.count { it.severity == RiskLevel.CRITICAL }
         val highCount = findings.count { it.severity == RiskLevel.HIGH }
         val mediumCount = findings.count { it.severity == RiskLevel.MEDIUM }
         val lowCount = findings.count { it.severity == RiskLevel.LOW }
 
-        // Extract permission entries only from findings explicitly identified
-        // as dangerous-permission findings. Evidence formats may vary by scanner.
-        val dangerousPermEntries = findings
-            .filter {
-                it.name.contains("Dangerous Permission", ignoreCase = true)
-            }
-            .flatMap { finding ->
-                finding.evidence.lines()
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-            }
-            .distinct()
-            .map { permissionName ->
+        // Extract dangerous permission entries from assessment contributing factors and findings
+        val dangerousPermEntries = risk.contributingFactors
+            .filter { it.id.startsWith("DANG_") }
+            .map { factor ->
+                val permName = factor.evidence ?: factor.title.substringAfterLast(":")
                 PermissionEntry(
-                    name = permissionName.substringAfterLast("."),
-                    description = "Dangerous permission reported by APK analysis.",
+                    name = permName.substringAfterLast(".").trim(),
+                    description = factor.description,
                     category = "DANGEROUS"
                 )
+            }.ifEmpty {
+                result.findings
+                    .filter { it.name.contains("Dangerous Permission", ignoreCase = true) }
+                    .flatMap { finding ->
+                        finding.evidence.lines()
+                            .map { it.trim() }
+                            .filter { it.isNotBlank() }
+                    }
+                    .distinct()
+                    .map { permissionName ->
+                        PermissionEntry(
+                            name = permissionName.substringAfterLast("."),
+                            description = "Dangerous permission reported by APK analysis.",
+                            category = "DANGEROUS"
+                        )
+                    }
             }
 
         val executiveSummary = createExecutiveSummary(
@@ -203,26 +357,7 @@ class SecurityReportRepository(
 
         val riskAssessment = riskRepo.assessInstalledApp(packageName)
 
-        // These are security findings derived from assessment factors.
-        // A finding is not necessarily a confirmed exploitable vulnerability.
-        val findings = riskAssessment.contributingFactors.map { factor ->
-            VulnerabilityFinding(
-                name = factor.title,
-                severity = factor.severity,
-                affectedComponent = factor.category.displayName,
-                evidence = factor.evidence ?: factor.description,
-                impact = factor.description,
-                recommendation = riskAssessment.recommendations
-                    .find {
-                        it.title.contains(
-                            factor.title,
-                            ignoreCase = true
-                        )
-                    }
-                    ?.action
-                    ?: "Review application privileges and minimize attack surface."
-            )
-        }
+        val findings = buildUnifiedFindings(riskAssessment)
 
         val criticalCount = findings.count {
             it.severity == RiskLevel.CRITICAL
