@@ -336,7 +336,5 @@ fun ApkScannerScreen(
                 }
             }
         }
-
-        APVMBottomBar()
     }
 }

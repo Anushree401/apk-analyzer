@@ -416,7 +416,5 @@ fun RiskAssessmentScreen(
                 onDismiss = { showAppPicker = false }
             )
         }
-
-        APVMBottomBar()
     }
 }

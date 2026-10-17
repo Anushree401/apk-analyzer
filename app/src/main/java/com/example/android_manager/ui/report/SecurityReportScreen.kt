@@ -295,11 +295,6 @@ fun SecurityReportScreen(
                 )
             }
         }
-
-        APVMBottomBar(
-            currentScreen = Screen.SecurityReport,
-            onNavigate = { screen -> onNavigate?.invoke(screen) }
-        )
     }
 }
 

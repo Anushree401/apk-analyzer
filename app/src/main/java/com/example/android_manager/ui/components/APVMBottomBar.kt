@@ -1,66 +1,77 @@
+
 package com.example.android_manager.ui.components
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_manager.navigation.Screen
-import com.example.android_manager.ui.theme.Border
-import com.example.android_manager.ui.theme.CyberCyan
-import com.example.android_manager.ui.theme.PrimaryText
-import com.example.android_manager.ui.theme.SecondaryText
+
+private val NavBackground = Color(0xFF080808)
+private val NavSelected = Color(0xFF00DCC0)
+private val NavUnselected = Color(0xFF888888)
 
 @Composable
 fun APVMBottomBar(
     modifier: Modifier = Modifier,
-    currentScreen: Screen? = null,
-    onNavigate: ((Screen) -> Unit)? = null
+    currentScreen: Screen,
+    onNavigate: (Screen) -> Unit
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = Border,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(vertical = 12.dp, horizontal = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .background(NavBackground)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         BottomNavItem(
             label = "Home",
-            isSelected = currentScreen == Screen.Dashboard,
-            onClick = { onNavigate?.invoke(Screen.Dashboard) }
+            selected = currentScreen == Screen.Dashboard,
+            onClick = { onNavigate(Screen.Dashboard) }
         )
+
         BottomNavItem(
             label = "Apps",
-            isSelected = currentScreen == Screen.PermissionAuditor,
-            onClick = { onNavigate?.invoke(Screen.PermissionAuditor) }
+            selected = currentScreen == Screen.Apps ||
+                    currentScreen == Screen.PermissionAuditor ||
+                    currentScreen == Screen.ProcessManager ||
+                    currentScreen == Screen.RiskAssessment,
+            onClick = { onNavigate(Screen.Apps) }
         )
+
         BottomNavItem(
             label = "Scan",
-            isSelected = currentScreen == Screen.ApkScanner,
-            onClick = { onNavigate?.invoke(Screen.ApkScanner) }
+            selected = currentScreen == Screen.ApkScanner,
+            onClick = { onNavigate(Screen.ApkScanner) }
         )
+
         BottomNavItem(
             label = "Reports",
-            isSelected = currentScreen == Screen.SecurityReport || currentScreen == Screen.RiskAssessment,
-            onClick = { onNavigate?.invoke(Screen.SecurityReport) }
+            selected = currentScreen == Screen.SecurityReport,
+            onClick = { onNavigate(Screen.SecurityReport) }
         )
+
         BottomNavItem(
             label = "History",
-            isSelected = currentScreen == Screen.ScanHistory,
-            onClick = { onNavigate?.invoke(Screen.ScanHistory) }
+            selected = currentScreen == Screen.ScanHistory,
+            onClick = { onNavigate(Screen.ScanHistory) }
         )
     }
 }
@@ -68,17 +79,21 @@ fun APVMBottomBar(
 @Composable
 private fun BottomNavItem(
     label: String,
-    isSelected: Boolean,
+    selected: Boolean,
     onClick: () -> Unit
 ) {
     Text(
         text = label,
-        color = if (isSelected) CyberCyan else SecondaryText,
-        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-        fontSize = 12.sp,
+        color = if (selected) NavSelected else NavUnselected,
+        fontSize = 11.sp,
+        fontWeight = if (selected) {
+            FontWeight.SemiBold
+        } else {
+            FontWeight.Normal
+        },
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 9.dp)
     )
 }

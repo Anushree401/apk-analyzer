@@ -539,8 +539,6 @@ fun PermissionAuditorScreen(
             }
         }
     }
-
-    APVMBottomBar()
 }
 
 @Composable
