@@ -12,17 +12,21 @@ import com.example.android_manager.model.ProcessExitInfo
 import com.example.android_manager.model.ProcessInfo
 import com.example.android_manager.model.ProcessState
 
+/**
+ * Reads application-usage events and the limited process information Android exposes.
+ *
+ * Important: runningAppProcesses is not a complete inventory of other apps on modern
+ * Android. An empty result means no other processes were visible to this app, not
+ * necessarily that no applications or services are running.
+ */
 class ProcessRepository(
     private val context: Context
 ) {
-
     private val packageManager = context.packageManager
 
     fun hasUsageAccess(): Boolean {
-
         val appOpsManager =
-            context.getSystemService(Context.APP_OPS_SERVICE)
-                    as AppOpsManager
+            context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
 
         return appOpsManager.checkOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS,
@@ -32,57 +36,40 @@ class ProcessRepository(
     }
 
     fun getCurrentForegroundApp(): ProcessInfo? {
+        if (!hasUsageAccess()) return null
 
-        if (!hasUsageAccess()) {
-            return null
-        }
-
-        val packageName =
-            getLatestForegroundPackage()
-                ?: return null
-
-        if (packageName == context.packageName) {
-            return null
-        }
+        val packageName = getLatestForegroundPackage() ?: return null
+        if (packageName == context.packageName) return null
 
         return createProcessInfo(
             packageName = packageName,
             state = ProcessState.FOREGROUND,
-            lastActiveTime = System.currentTimeMillis()
+            lastActiveTime = getLatestForegroundTimestamp()
         )
     }
 
+    /**
+     * Returns only processes that Android makes visible through ActivityManager.
+     * This is deliberately not presented as a complete list of running apps.
+     */
     fun getBackgroundProcesses(): List<ProcessInfo> {
-
         val activityManager =
-            context.getSystemService(Context.ACTIVITY_SERVICE)
-                    as ActivityManager
+            context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-        val currentForegroundPackage =
-            getLatestForegroundPackage()
-
-        val runningProcesses =
-            activityManager.runningAppProcesses
-                ?: return emptyList()
+        val currentForegroundPackage = getLatestForegroundPackage()
+        val runningProcesses = activityManager.runningAppProcesses ?: return emptyList()
 
         return runningProcesses
             .filter { process ->
-
                 process.pid != Process.myPid() &&
-
-                        process.pkgList.none {
-                            it == context.packageName
-                        }
+                        process.pkgList.none { it == context.packageName }
             }
             .flatMap { process ->
-
                 process.pkgList.mapNotNull { packageName ->
-
-                    if (packageName == context.packageName) {
-                        return@mapNotNull null
-                    }
-
-                    if (packageName == currentForegroundPackage) {
+                    if (
+                        packageName == context.packageName ||
+                        packageName == currentForegroundPackage
+                    ) {
                         return@mapNotNull null
                     }
 
@@ -95,191 +82,119 @@ class ProcessRepository(
                 }
             }
             .distinctBy { it.packageName }
-            .sortedBy { it.processName.lowercase() }
+            .sortedBy { it.processName.lowercase(LocaleHolder.locale) }
     }
 
+    /**
+     * Uses Usage Access events. These are historical usage events, not proof that an
+     * app is still running at the time this method is called.
+     */
     fun getRecentlyActiveApps(): List<ProcessInfo> {
-
-        if (!hasUsageAccess()) {
-            return emptyList()
-        }
+        if (!hasUsageAccess()) return emptyList()
 
         val usageStatsManager =
-            context.getSystemService(Context.USAGE_STATS_SERVICE)
-                    as UsageStatsManager
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
         val endTime = System.currentTimeMillis()
-
-        // Last 30 minutes.
-        val startTime =
-            endTime - (30 * 60 * 1000)
-
-        val usageEvents =
-            usageStatsManager.queryEvents(
-                startTime,
-                endTime
-            )
-
-        val latestActivity =
-            mutableMapOf<String, Long>()
-
+        val startTime = endTime - RECENT_ACTIVITY_WINDOW_MS
+        val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+        val latestActivity = mutableMapOf<String, Long>()
         val event = UsageEvents.Event()
 
         while (usageEvents.hasNextEvent()) {
-
             usageEvents.getNextEvent(event)
 
             if (
-                event.eventType ==
-                UsageEvents.Event.ACTIVITY_RESUMED ||
-                event.eventType ==
-                UsageEvents.Event.MOVE_TO_FOREGROUND
+                isForegroundEvent(event.eventType) &&
+                event.packageName != context.packageName
             ) {
-
-                if (
-                    event.packageName != context.packageName
-                ) {
-
-                    val previous =
-                        latestActivity[event.packageName]
-                            ?: 0L
-
-                    if (event.timeStamp > previous) {
-                        latestActivity[event.packageName] =
-                            event.timeStamp
-                    }
+                val previous = latestActivity[event.packageName] ?: 0L
+                if (event.timeStamp > previous) {
+                    latestActivity[event.packageName] = event.timeStamp
                 }
             }
         }
 
-        val backgroundPackages =
-            getBackgroundProcesses()
-                .map { it.packageName }
-                .toSet()
-
-        val currentForeground =
-            getLatestForegroundPackage()
+        val backgroundPackages = getBackgroundProcesses()
+            .map { it.packageName }
+            .toSet()
+        val currentForeground = getLatestForegroundPackage()
 
         return latestActivity
             .filter { (packageName, _) ->
-
-                packageName != currentForeground &&
-                        packageName !in backgroundPackages
+                packageName != currentForeground && packageName !in backgroundPackages
             }
             .mapNotNull { (packageName, timestamp) ->
-
                 createProcessInfo(
                     packageName = packageName,
                     state = ProcessState.RECENTLY_ACTIVE,
                     lastActiveTime = timestamp
                 )
             }
-            .sortedByDescending {
-                it.lastActiveTime
-            }
+            .sortedByDescending { it.lastActiveTime }
     }
 
     fun getProcessOverview(): List<ProcessInfo> {
-
-        val result =
-            mutableListOf<ProcessInfo>()
-
-        val foreground =
-            getCurrentForegroundApp()
-
-        if (foreground != null) {
-            result.add(foreground)
-        }
-
-        result.addAll(
-            getBackgroundProcesses()
-        )
-
-        result.addAll(
-            getRecentlyActiveApps()
-        )
-
-        return result
-            .distinctBy { it.packageName }
+        return buildList {
+            getCurrentForegroundApp()?.let(::add)
+            addAll(getBackgroundProcesses())
+            addAll(getRecentlyActiveApps())
+        }.distinctBy { it.packageName }
     }
 
+    /**
+     * Count of visible process records only. This is not a device-wide process count.
+     */
     fun getRunningProcessCount(): Int {
-
         val activityManager =
-            context.getSystemService(Context.ACTIVITY_SERVICE)
-                    as ActivityManager
+            context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-        val processes =
-            activityManager.runningAppProcesses
-                ?: return 0
-
-        return processes
+        return activityManager.runningAppProcesses
+            .orEmpty()
             .filter { process ->
-
                 process.pid != Process.myPid() &&
-
-                        process.pkgList.none {
-                            it == context.packageName
-                        }
+                        process.pkgList.none { it == context.packageName }
             }
             .distinctBy { it.pid }
             .size
     }
 
     private fun getLatestForegroundPackage(): String? {
+        return getLatestForegroundEvent()?.first
+    }
 
-        if (!hasUsageAccess()) {
-            return null
-        }
+    private fun getLatestForegroundTimestamp(): Long {
+        return getLatestForegroundEvent()?.second ?: 0L
+    }
+
+    private fun getLatestForegroundEvent(): Pair<String, Long>? {
+        if (!hasUsageAccess()) return null
 
         val usageStatsManager =
-            context.getSystemService(Context.USAGE_STATS_SERVICE)
-                    as UsageStatsManager
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - FOREGROUND_LOOKBACK_WINDOW_MS
+        val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
 
-        val endTime =
-            System.currentTimeMillis()
-
-        val startTime =
-            endTime - (10 * 60 * 1000)
-
-        val usageEvents =
-            usageStatsManager.queryEvents(
-                startTime,
-                endTime
-            )
-
-        var latestPackage: String? = null
-        var latestTimestamp = 0L
-
-        val event =
-            UsageEvents.Event()
+        var latestEvent: Pair<String, Long>? = null
+        val event = UsageEvents.Event()
 
         while (usageEvents.hasNextEvent()) {
-
             usageEvents.getNextEvent(event)
-
-            if (
-                event.eventType ==
-                UsageEvents.Event.ACTIVITY_RESUMED ||
-                event.eventType ==
-                UsageEvents.Event.MOVE_TO_FOREGROUND
-            ) {
-
-                if (
-                    event.timeStamp >
-                    latestTimestamp
-                ) {
-
-                    latestTimestamp =
-                        event.timeStamp
-
-                    latestPackage =
-                        event.packageName
+            if (isForegroundEvent(event.eventType)) {
+                val previousTimestamp = latestEvent?.second ?: 0L
+                if (event.timeStamp > previousTimestamp) {
+                    latestEvent = event.packageName to event.timeStamp
                 }
             }
         }
 
-        return latestPackage
+        return latestEvent
+    }
+
+    private fun isForegroundEvent(eventType: Int): Boolean {
+        return eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
+                eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
     }
 
     private fun createProcessInfo(
@@ -289,23 +204,13 @@ class ProcessRepository(
         importance: Int = 0,
         lastActiveTime: Long = 0L
     ): ProcessInfo? {
-
         val applicationInfo = try {
-
-            packageManager.getApplicationInfo(
-                packageName,
-                0
-            )
-
+            packageManager.getApplicationInfo(packageName, 0)
         } catch (_: Exception) {
-
             return null
         }
 
-        val appName =
-            applicationInfo
-                .loadLabel(packageManager)
-                .toString()
+        val appName = applicationInfo.loadLabel(packageManager).toString()
 
         return ProcessInfo(
             processName = appName,
@@ -313,122 +218,74 @@ class ProcessRepository(
             pid = pid,
             memoryMb = 0,
             importance = importance,
-            isForeground =
-                state == ProcessState.FOREGROUND,
+            isForeground = state == ProcessState.FOREGROUND,
             state = state,
             lastActiveTime = lastActiveTime
         )
     }
 
     fun getProcessExitHistory(): List<ProcessExitInfo> {
-
-        if (
-            Build.VERSION.SDK_INT <
-            Build.VERSION_CODES.R
-        ) {
-            return emptyList()
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
 
         val activityManager =
-            context.getSystemService(
-                Context.ACTIVITY_SERVICE
-            ) as ActivityManager
-
-        val packages =
-            packageManager
-                .getInstalledApplications(0)
-
-        val result =
-            mutableListOf<ProcessExitInfo>()
+            context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val packages = packageManager.getInstalledApplications(0)
+        val result = mutableListOf<ProcessExitInfo>()
 
         for (app in packages) {
-
             try {
-
-                val exits =
-                    activityManager
-                        .getHistoricalProcessExitReasons(
-                            app.packageName,
-                            0,
-                            5
-                        )
+                val exits = activityManager.getHistoricalProcessExitReasons(
+                    app.packageName,
+                    0,
+                    5
+                )
 
                 for (exit in exits) {
-
                     result.add(
                         ProcessExitInfo(
-                            packageName =
-                                app.packageName,
-                            processName =
-                                exit.processName
-                                    ?: app.packageName,
-                            timestamp =
-                                exit.timestamp,
-                            reason =
-                                getExitReasonName(
-                                    exit.reason
-                                ),
-                            description =
-                                exit.description
+                            packageName = app.packageName,
+                            processName = exit.processName ?: app.packageName,
+                            timestamp = exit.timestamp,
+                            reason = getExitReasonName(exit.reason),
+                            description = exit.description
                         )
                     )
                 }
-
             } catch (_: Exception) {
+                // Some packages may not have visible exit history. Continue with others.
             }
         }
 
         return result
-            .sortedByDescending {
-                it.timestamp
-            }
-            .take(50)
+            .sortedByDescending { it.timestamp }
+            .take(MAX_EXIT_EVENTS)
     }
 
-    private fun getExitReasonName(
-        reason: Int
-    ): String {
-
+    private fun getExitReasonName(reason: Int): String {
         return when (reason) {
-
-            ApplicationExitInfo.REASON_ANR ->
-                "ANR"
-
-            ApplicationExitInfo.REASON_CRASH ->
-                "CRASH"
-
-            ApplicationExitInfo.REASON_CRASH_NATIVE ->
-                "NATIVE CRASH"
-
-            ApplicationExitInfo.REASON_DEPENDENCY_DIED ->
-                "DEPENDENCY DIED"
-
-            ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE ->
-                "EXCESSIVE RESOURCE USAGE"
-
-            ApplicationExitInfo.REASON_EXIT_SELF ->
-                "APP EXITED"
-
-            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE ->
-                "INITIALIZATION FAILURE"
-
-            ApplicationExitInfo.REASON_LOW_MEMORY ->
-                "LOW MEMORY"
-
-            ApplicationExitInfo.REASON_PERMISSION_CHANGE ->
-                "PERMISSION CHANGE"
-
-            ApplicationExitInfo.REASON_SIGNALED ->
-                "SIGNALED"
-
-            ApplicationExitInfo.REASON_USER_REQUESTED ->
-                "USER REQUESTED"
-
-            ApplicationExitInfo.REASON_UNKNOWN ->
-                "UNKNOWN"
-
-            else ->
-                "UNKNOWN"
+            ApplicationExitInfo.REASON_ANR -> "ANR"
+            ApplicationExitInfo.REASON_CRASH -> "CRASH"
+            ApplicationExitInfo.REASON_CRASH_NATIVE -> "NATIVE CRASH"
+            ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY DIED"
+            ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "EXCESSIVE RESOURCE USAGE"
+            ApplicationExitInfo.REASON_EXIT_SELF -> "APP EXITED"
+            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "INITIALIZATION FAILURE"
+            ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW MEMORY"
+            ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "PERMISSION CHANGE"
+            ApplicationExitInfo.REASON_SIGNALED -> "SIGNALED"
+            ApplicationExitInfo.REASON_USER_REQUESTED -> "USER REQUESTED"
+            ApplicationExitInfo.REASON_UNKNOWN -> "UNKNOWN"
+            else -> "UNKNOWN"
         }
+    }
+
+    private object LocaleHolder {
+        val locale: java.util.Locale = java.util.Locale.getDefault()
+    }
+
+    private companion object {
+        const val RECENT_ACTIVITY_WINDOW_MS = 30 * 60 * 1000L
+        const val FOREGROUND_LOOKBACK_WINDOW_MS = 10 * 60 * 1000L
+        const val MAX_EXIT_EVENTS = 50
     }
 }
