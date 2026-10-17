@@ -2,8 +2,6 @@ package com.example.android_manager.navigation
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -73,6 +71,11 @@ fun AppNavigation() {
                     },
                     onApkScanner = {
                         navigateToTab(Screen.ApkScanner)
+                    },
+                    onNavigateToReport = { historyId ->
+                        navController.navigate(
+                            Screen.SecurityReport.createRoute(historyId = historyId)
+                        )
                     }
                 )
             }

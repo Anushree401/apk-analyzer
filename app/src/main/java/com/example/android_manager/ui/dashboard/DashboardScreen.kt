@@ -43,8 +43,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.android_manager.data.dashboard.DashboardRepository
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
+import com.example.android_manager.ui.theme.Border
+import com.example.android_manager.ui.theme.CardBackground
+import com.example.android_manager.ui.theme.CyberCyan
+import com.example.android_manager.ui.theme.MutedText
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
+import com.example.android_manager.ui.theme.Surface
+import com.example.android_manager.ui.theme.color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,18 +59,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Cyan = Color(0xFF00DCC0)
-private val CardBg = Color(0xFF101010)
-private val InnerBg = Color(0xFF1A1A1A)
-private val CardBorder = Color(0xFF292929)
-private val Muted = Color(0xFF777777)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
     onApps: () -> Unit = {},
-    onApkScanner: () -> Unit = {}
+    onApkScanner: () -> Unit = {},
+    onNavigateToReport: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { DashboardRepository(context) }
@@ -145,7 +146,7 @@ fun DashboardScreen(
 
                     Text(
                         "A N D R O I D   S E C U R I T Y",
-                        color = Cyan,
+                        color = CyberCyan,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -173,8 +174,8 @@ fun DashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
-                            .background(CardBg)
-                            .border(1.dp, CardBorder, RoundedCornerShape(18.dp))
+                            .background(CardBackground)
+                            .border(1.dp, Border, RoundedCornerShape(18.dp))
                             .padding(18.dp)
                     ) {
                         Row(
@@ -206,12 +207,12 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .size(58.dp)
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(InnerBg),
+                                    .background(Surface),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     "APK",
-                                    color = Cyan,
+                                    color = CyberCyan,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -223,18 +224,10 @@ fun DashboardScreen(
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                .height(3.dp)
+                                .height(2.dp)
                                 .clip(CircleShape)
-                                .background(InnerBg)
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(0.72f)
-                                    .height(3.dp)
-                                    .clip(CircleShape)
-                                    .background(Cyan)
-                            )
-                        }
+                                .background(CyberCyan)
+                        )
                     }
                 }
 
@@ -317,8 +310,8 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(CardBg)
-                                .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+                                .background(CardBackground)
+                                .border(1.dp, Border, RoundedCornerShape(14.dp))
                                 .padding(18.dp)
                         ) {
                             Text(
@@ -346,8 +339,9 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(CardBg)
-                                .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+                                .background(CardBackground)
+                                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                .clickable { onNavigateToReport(scan.id) }
                                 .padding(16.dp)
                         ) {
                             Row(
@@ -357,7 +351,7 @@ fun DashboardScreen(
                             ) {
                                 Text(
                                     scan.riskLevel.name,
-                                    color = Cyan,
+                                    color = scan.riskLevel.color(),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -398,7 +392,7 @@ fun DashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        color = Muted,
+                        color = MutedText,
                         fontSize = 11.sp
                     )
                     Spacer(Modifier.height(12.dp))
@@ -438,8 +432,8 @@ private fun MetricCard(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(CardBg)
-            .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
+            .background(CardBackground)
+            .border(1.dp, Border, RoundedCornerShape(14.dp))
             .padding(15.dp)
     ) {
         Text(
@@ -458,7 +452,7 @@ private fun MetricCard(
         Spacer(Modifier.height(6.dp))
         Text(
             note,
-            color = Muted,
+            color = MutedText,
             fontSize = 10.sp,
             lineHeight = 14.sp
         )
@@ -478,8 +472,8 @@ private fun ActionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBg)
-            .border(1.dp, CardBorder, RoundedCornerShape(16.dp))
+            .background(CardBackground)
+            .border(1.dp, Border, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
@@ -490,14 +484,14 @@ private fun ActionCard(
         ) {
             Text(
                 "$number / $category",
-                color = Cyan,
+                color = CyberCyan,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.sp
             )
             Text(
                 "↗",
-                color = Cyan,
+                color = CyberCyan,
                 fontSize = 18.sp
             )
         }
@@ -524,7 +518,7 @@ private fun ActionCard(
 
         Text(
             action,
-            color = Cyan,
+            color = CyberCyan,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp

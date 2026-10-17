@@ -6,5 +6,6 @@ data class ApkInfo(
     val versionCode: Long?,
     val minSdk: Int?,
     val targetSdk: Int?,
-    val appName: String?
+    val appName: String?,
+    val requestedPermissions: List<String> = emptyList()
 )

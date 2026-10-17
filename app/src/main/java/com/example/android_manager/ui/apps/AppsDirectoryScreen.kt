@@ -30,14 +30,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
+import com.example.android_manager.ui.theme.Border
+import com.example.android_manager.ui.theme.CardBackground
+import com.example.android_manager.ui.theme.CyberCyan
+import com.example.android_manager.ui.theme.MutedText
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
-
-private val AppsCyan = Color(0xFF00DCC0)
-private val AppsCard = Color(0xFF101010)
-private val AppsIconBg = Color(0xFF192522)
-private val AppsBorder = Color(0xFF292929)
-private val AppsMuted = Color(0xFF777777)
+import com.example.android_manager.ui.theme.Surface
 
 private data class SecurityModule(
     val number: String,
@@ -106,7 +105,7 @@ fun AppsDirectoryScreen(
 
             Text(
                 text = "APVM / MODULES",
-                color = AppsCyan,
+                color = CyberCyan,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.7.sp
@@ -157,10 +156,10 @@ private fun ModuleDirectoryCard(
             .fillMaxWidth()
             .aspectRatio(0.88f)
             .clip(RoundedCornerShape(15.dp))
-            .background(AppsCard)
+            .background(CardBackground)
             .border(
                 width = 1.dp,
-                color = AppsBorder,
+                color = Border,
                 shape = RoundedCornerShape(15.dp)
             )
             .clickable(onClick = module.onClick)
@@ -175,12 +174,12 @@ private fun ModuleDirectoryCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(11.dp))
-                    .background(AppsIconBg),
+                    .background(Surface),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = module.symbol,
-                    color = AppsCyan,
+                    color = CyberCyan,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -188,7 +187,7 @@ private fun ModuleDirectoryCard(
 
             Text(
                 text = module.number,
-                color = AppsMuted,
+                color = MutedText,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp
             )
@@ -219,14 +218,14 @@ private fun ModuleDirectoryCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(AppsBorder)
+                .background(Border)
         )
 
         Spacer(Modifier.height(10.dp))
 
         Text(
             text = module.category,
-            color = AppsMuted,
+            color = MutedText,
             fontSize = 8.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.4.sp,
@@ -242,7 +241,7 @@ private fun ModuleDirectoryCard(
         ) {
             Text(
                 text = "OPEN",
-                color = AppsCyan,
+                color = CyberCyan,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.8.sp
@@ -250,7 +249,7 @@ private fun ModuleDirectoryCard(
 
             Text(
                 text = "↗",
-                color = AppsCyan,
+                color = CyberCyan,
                 fontSize = 17.sp
             )
         }

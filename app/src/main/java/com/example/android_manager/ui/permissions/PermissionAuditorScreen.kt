@@ -43,17 +43,22 @@ import com.example.android_manager.data.permissions.AppPermissionInfo
 import com.example.android_manager.data.permissions.PermissionRepository
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
+import com.example.android_manager.ui.theme.Border
+import com.example.android_manager.ui.theme.CardBackground
+import com.example.android_manager.ui.theme.CyberCyan
+import com.example.android_manager.ui.theme.MutedText
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.SecondaryText
+import com.example.android_manager.ui.theme.Surface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val AuditorCyan = Color(0xFF00DCC0)
-private val AuditorCard = Color(0xFF101010)
-private val AuditorInner = Color(0xFF191919)
-private val AuditorBorder = Color(0xFF292929)
-private val AuditorMuted = Color(0xFF777777)
+private val AuditorCyan = CyberCyan
+private val AuditorCard = CardBackground
+private val AuditorInner = Surface
+private val AuditorBorder = Border
+private val AuditorMuted = MutedText
 
 private enum class PermissionFilter(val label: String) {
     ALL("All"),

@@ -147,6 +147,10 @@ class SecurityReportRepository(
         val packageInfo = try {
             pm.getPackageInfo(packageName, 0)
         } catch (e: Exception) {
+            val active = getActiveReport()
+            if (active != null && active.metadata.packageName == packageName) {
+                return active
+            }
             throw IllegalArgumentException(
                 "Unable to retrieve package information for $packageName.",
                 e
@@ -361,21 +365,25 @@ class SecurityReportRepository(
             overallScore = entry.riskScore,
             overallLevel = entry.riskLevel,
 
-            // Historical records do not store the original category scores.
-            permissionRisk = 0,
-            permissionRiskLevel = RiskLevel.LOW,
+            // Historical records do not store individual category scores.
+            // Represent them as unassessed (null) rather than fabricated zero/LOW risk.
+            permissionRisk = null,
+            permissionRiskLevel = null,
 
             vulnerabilityRisk = null,
             vulnerabilityRiskLevel = null,
 
-            componentExposureRisk = 0,
-            componentExposureRiskLevel = RiskLevel.LOW,
+            componentExposureRisk = null,
+            componentExposureRiskLevel = null,
 
-            configurationRisk = 0,
-            configurationRiskLevel = RiskLevel.LOW,
+            configurationRisk = null,
+            configurationRiskLevel = null,
 
             componentBreakdown = compBreakdown,
             recommendations = recommendations,
+            minSdk = entry.minSdk.takeIf { it > 0 },
+            targetSdk = entry.targetSdk.takeIf { it > 0 },
+            versionCode = entry.versionCode.takeIf { it > 0 },
             timestamp = entry.timestamp
         )
 

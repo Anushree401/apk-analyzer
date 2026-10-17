@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import com.example.android_manager.data.history.ScanHistoryRepository
 import com.example.android_manager.model.RiskLevel
 import com.example.android_manager.model.ScanHistoryEntry
-import com.example.android_manager.ui.components.APVMBottomBar
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
 import com.example.android_manager.ui.theme.CyberCyan
@@ -158,17 +157,7 @@ fun ScanHistoryScreen(
             }
         }
 
-        APVMBottomBar(
-            currentScreen = com.example.android_manager.navigation.Screen.ScanHistory,
-            onNavigate = { screen ->
-                when (screen) {
-                    com.example.android_manager.navigation.Screen.Dashboard -> onBack()
-                    com.example.android_manager.navigation.Screen.ApkScanner -> onNavigateToScan()
-                    else -> Unit
-                }
-            },
-            modifier = Modifier.padding(12.dp)
-        )
+
     }
 
     // Detail Inspection Sheet

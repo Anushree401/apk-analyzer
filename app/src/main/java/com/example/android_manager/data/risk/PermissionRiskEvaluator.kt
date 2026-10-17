@@ -34,65 +34,65 @@ class PermissionRiskEvaluator {
 
     private val riskyCombinationRules = listOf(
         CombinationRule(
-            name = "Audio Surveillance Vector",
+            name = "Audio Capture & Network Capability",
             requiredPermissions = setOf("RECORD_AUDIO", "INTERNET"),
-            dangerSummary = "App can record microphone audio and exfiltrate data over the network without user awareness.",
+            dangerSummary = "App requests microphone access and outbound network connectivity, creating potential audio data exposure.",
             severity = RiskLevel.HIGH,
             penalty = 22
         ),
         CombinationRule(
-            name = "Camera & Audio Exfiltration",
+            name = "Camera & Audio Capture with Network Access",
             requiredPermissions = setOf("CAMERA", "RECORD_AUDIO", "INTERNET"),
-            dangerSummary = "Simultaneous camera and microphone capture capability combined with outbound internet access.",
+            dangerSummary = "Simultaneous camera and microphone capture capabilities combined with outbound network access.",
             severity = RiskLevel.CRITICAL,
             penalty = 30
         ),
         CombinationRule(
-            name = "Silent SMS Intercept & Fraud",
+            name = "Background SMS Reception Capability",
             requiredPermissions = setOf("RECEIVE_SMS", "RECEIVE_BOOT_COMPLETED"),
-            dangerSummary = "App can monitor incoming two-factor authentication SMS codes immediately on device boot.",
+            dangerSummary = "App can receive incoming SMS messages and start automatically at boot, introducing potential exposure of sensitive verification codes.",
             severity = RiskLevel.CRITICAL,
             penalty = 28
         ),
         CombinationRule(
-            name = "Outgoing SMS Toll Fraud",
+            name = "Background Outgoing SMS Capability",
             requiredPermissions = setOf("SEND_SMS", "RECEIVE_BOOT_COMPLETED"),
-            dangerSummary = "Can initiate premium SMS messages in the background without explicit real-time consent.",
+            dangerSummary = "App can initiate SMS transmission and initialize on device boot, posing risk of unprompted background messaging.",
             severity = RiskLevel.CRITICAL,
             penalty = 26
         ),
         CombinationRule(
-            name = "Stealth Background Tracking",
+            name = "Background Geolocation Tracking",
             requiredPermissions = setOf("ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION", "INTERNET"),
-            dangerSummary = "Continuous covert GPS tracking even when application is closed, exfiltrating location to remote servers.",
+            dangerSummary = "Continuous background GPS location tracking combined with network access enables location telemetry when the app is closed.",
             severity = RiskLevel.HIGH,
             penalty = 24
         ),
         CombinationRule(
-            name = "Trojan Dropper Vector",
+            name = "Dynamic Package Installation Risk",
             requiredPermissions = setOf("REQUEST_INSTALL_PACKAGES", "INTERNET"),
-            dangerSummary = "Can download arbitrary secondary APK payloads from internet and prompt for silent or coerced installation.",
+            dangerSummary = "App requests both internet access and package installation permissions, allowing it to download and prompt to install secondary APK packages without official store verification.",
             severity = RiskLevel.HIGH,
             penalty = 25
         ),
         CombinationRule(
-            name = "Clickjacking & Overlay Attack",
+            name = "Overlay & Accessibility Privilege Combination",
             requiredPermissions = setOf("SYSTEM_ALERT_WINDOW", "BIND_ACCESSIBILITY_SERVICE"),
-            dangerSummary = "Capable of drawing invisible screen overlays over banking/login apps and harvesting touch interactions.",
+            dangerSummary = "App requests both window overlay and accessibility service binding, creating potential interface overlay and touch redirection risks.",
             severity = RiskLevel.CRITICAL,
             penalty = 32
         ),
         CombinationRule(
-            name = "Contact Book & Identity Harvesting",
+            name = "Contacts & Device Identifier Access",
             requiredPermissions = setOf("READ_CONTACTS", "READ_PHONE_STATE", "INTERNET"),
-            dangerSummary = "App can access complete address book and persistent device identifiers and transfer them externally.",
+            dangerSummary = "App can access complete address book and persistent device identifiers combined with outbound network access.",
             severity = RiskLevel.HIGH,
             penalty = 20
         ),
         CombinationRule(
             name = "Call Log & Telephony Monitoring",
             requiredPermissions = setOf("READ_CALL_LOG", "READ_PHONE_STATE", "INTERNET"),
-            dangerSummary = "Full history of dialed and received phone numbers can be tracked and synced with external servers.",
+            dangerSummary = "Call history records and telephony identifiers can be accessed and transmitted over the network.",
             severity = RiskLevel.HIGH,
             penalty = 18
         )

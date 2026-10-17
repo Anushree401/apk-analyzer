@@ -96,7 +96,7 @@ class ComponentExposureEvaluator {
             }
         }
 
-        // 4. Exported Content Providers (Highest risk: directly leaks data or allows SQLi)
+        // 4. Exported Content Providers (Highest risk: directly exposes data or database interfaces)
         packageInfo.providers?.forEach { provider ->
             if (provider.exported) {
                 exportedProviders++
@@ -110,7 +110,7 @@ class ComponentExposureEvaluator {
                         RiskFactor(
                             id = "EXP_PRV_${provider.name}",
                             title = "Unprotected Content Provider: $name",
-                            description = "Content Provider does not enforce read/write permission protection, risking database exfiltration.",
+                            description = "Content Provider does not enforce full read/write permission protection, risking unauthorized data access or database modification.",
                             severity = RiskLevel.CRITICAL,
                             category = RiskCategory.COMPONENT_EXPOSURE,
                             scorePenalty = 18,

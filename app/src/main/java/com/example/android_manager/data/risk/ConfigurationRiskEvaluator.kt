@@ -70,20 +70,22 @@ class ConfigurationRiskEvaluator {
 
         // 3. Cleartext Network Traffic
         val effectiveTargetSdk = targetSdk ?: applicationInfo.targetSdkVersion
-        val usesCleartext = if (android.os.Build.VERSION.SDK_INT >= 24) {
-            (applicationInfo.flags and ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC) != 0
+        val hasCleartextFlag = (applicationInfo.flags and ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC) != 0
+        val usesCleartext = if (effectiveTargetSdk >= 28) {
+            hasCleartextFlag
         } else {
+            // Prior to Android 9 (API 28), cleartext HTTP was permitted by default
             true
         }
 
-        if (usesCleartext && effectiveTargetSdk < 28) {
+        if (usesCleartext) {
             val cleartextPenalty = 16
             penalty += cleartextPenalty
             factors.add(
                 RiskFactor(
                     id = "CFG_CLEARTEXT",
                     title = "Unencrypted Cleartext HTTP Permitted",
-                    description = "Application allows unencrypted cleartext HTTP communications, enabling eavesdropping and MITM attacks.",
+                    description = "Application permits unencrypted cleartext HTTP communications, enabling eavesdropping and MITM attacks.",
                     severity = RiskLevel.HIGH,
                     category = RiskCategory.CONFIGURATION,
                     scorePenalty = cleartextPenalty,

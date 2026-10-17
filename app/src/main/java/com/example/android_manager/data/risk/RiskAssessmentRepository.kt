@@ -34,10 +34,20 @@ class RiskAssessmentRepository(
         val apkInfo = analysisResult.apkInfo
         val findings = analysisResult.findings
 
-        // Extract permissions from findings or known requested permissions
-        val permissionNames = findings
-            .filter { it.affectedComponent == "Permission" || it.name.startsWith("Permission:") }
-            .map { it.evidence.ifBlank { it.name.substringAfter("Permission: ") } }
+        // Extract permissions from apkInfo or findings
+        val permissionNames = if (apkInfo.requestedPermissions.isNotEmpty()) {
+            apkInfo.requestedPermissions
+        } else {
+            findings
+                .filter {
+                    it.affectedComponent == "Permission" ||
+                            it.name.startsWith("Permission:") ||
+                            it.name.contains("Dangerous Permission", ignoreCase = true)
+                }
+                .flatMap { finding ->
+                    finding.evidence.lines().map { it.trim() }.filter { it.isNotBlank() }
+                }
+        }
 
         val permResult = permissionEvaluator.evaluate(permissionNames)
         val vulnResult = vulnerabilityEvaluator.evaluate(findings)
@@ -110,7 +120,10 @@ class RiskAssessmentRepository(
             detectedCombinations = permResult.combinations,
             componentBreakdown = compResult.breakdown,
             recommendations = recommendations,
-            isSystemApp = false
+            isSystemApp = false,
+            minSdk = apkInfo.minSdk,
+            targetSdk = apkInfo.targetSdk,
+            versionCode = apkInfo.versionCode
         )
     }
 
@@ -238,12 +251,19 @@ class RiskAssessmentRepository(
         // 2. Component Exposure
         val compResult = componentEvaluator.evaluate(packageInfo)
 
-        // 3. Configuration & Hardening
+        val effectiveMinSdk = if (android.os.Build.VERSION.SDK_INT >= 24) appInfo.minSdkVersion else 21
         val configResult = configurationEvaluator.evaluate(
             applicationInfo = appInfo,
             targetSdk = appInfo.targetSdkVersion,
-            minSdk = if (android.os.Build.VERSION.SDK_INT >= 24) appInfo.minSdkVersion else 21
+            minSdk = effectiveMinSdk
         )
+
+        val versionCode = if (android.os.Build.VERSION.SDK_INT >= 28) {
+            packageInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode.toLong()
+        }
 
         // Vulnerability proxy for installed apps without static DEX decompilation
         val vulnScore: Int? = null
@@ -291,7 +311,10 @@ class RiskAssessmentRepository(
             detectedCombinations = permResult.combinations,
             componentBreakdown = compResult.breakdown,
             recommendations = recommendations,
-            isSystemApp = isSystem
+            isSystemApp = isSystem,
+            minSdk = effectiveMinSdk,
+            targetSdk = appInfo.targetSdkVersion,
+            versionCode = versionCode
         )
     }
 

@@ -125,9 +125,9 @@ fun RiskAssessmentScreen(
             targetName = assessment.targetName,
             packageName = assessment.packageName,
             versionName = assessment.versionName ?: "",
-            versionCode = 0L,
-            minSdk = 0,
-            targetSdk = 0,
+            versionCode = assessment.versionCode ?: 0L,
+            minSdk = assessment.minSdk ?: 0,
+            targetSdk = assessment.targetSdk ?: 0,
             riskScore = assessment.overallScore,
             riskLevel = assessment.overallLevel,
             status = when {
@@ -181,6 +181,14 @@ fun RiskAssessmentScreen(
 
                     currentAssessment = assessment
 
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val report = com.example.android_manager.data.report.SecurityReportRepository(context)
+                                .buildFromApkAnalysis(scanResult, assessment)
+                            com.example.android_manager.data.report.SecurityReportRepository.setActiveReport(report)
+                        } catch (_: Exception) {}
+                    }
+
                     saveAssessmentToHistory(
                         assessment = assessment,
                         scanType = ScanType.APK_FILE
@@ -205,6 +213,14 @@ fun RiskAssessmentScreen(
             }
 
             currentAssessment = assessment
+
+            withContext(Dispatchers.IO) {
+                try {
+                    val report = com.example.android_manager.data.report.SecurityReportRepository(context)
+                        .buildFromInstalledApp(targetPkg)
+                    com.example.android_manager.data.report.SecurityReportRepository.setActiveReport(report)
+                } catch (_: Exception) {}
+            }
 
             saveAssessmentToHistory(
                 assessment = assessment,

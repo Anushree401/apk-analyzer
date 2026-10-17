@@ -41,28 +41,44 @@ The primary objectives of APVM are:
 
 # 3. System Architecture
 
-The system is divided into an Android client and an analysis backend.
+APVM is built as a 100% native on-device Android application using Kotlin, Jetpack Compose, and Room Database. All permission classification, APK manifest analysis, and risk scoring execute locally without external network dependencies or remote backend services.
 
 ```mermaid
 flowchart TD
-    U[User] --> A[Android Application]
+    U[User] --> UI[Jetpack Compose UI Layer]
 
-    A --> D[Security Dashboard]
-    A --> P[Process Manager]
-    A --> R[Permission Auditor]
-    A --> S[APK Scanner]
+    UI --> D[Dashboard Screen]
+    UI --> P[Process Manager]
+    UI --> R[Permission Auditor]
+    UI --> S[APK Scanner]
+    UI --> RA[Risk Assessment]
+    UI --> RP[Security Report]
+    UI --> H[Scan History]
 
-    P --> API[Backend API]
-    R --> API
-    S --> API
+    subgraph Data & Repositories
+        D --> DRepo[DashboardRepository]
+        P --> PRepo[ProcessRepository]
+        R --> RRepo[PermissionRepository]
+        S --> SRepo[ApkScannerRepository]
+        RA --> RARepo[RiskAssessmentRepository]
+        RP --> RPRepo[SecurityReportRepository]
+        H --> HRepo[ScanHistoryRepository]
+    end
 
-    API --> AN[Analysis Engine]
-    AN --> RA[Risk Assessment]
-    RA --> RP[Report Generator]
-    RP --> DB[(Scan History)]
+    subgraph Evaluator Engine
+        RARepo --> PEval[PermissionRiskEvaluator]
+        RARepo --> CEval[ComponentExposureEvaluator]
+        RARepo --> CFEval[ConfigurationRiskEvaluator]
+        RARepo --> VEval[VulnerabilityRiskEvaluator]
+    end
+
+    subgraph Platform & Storage
+        PRepo --> OS_AM[ActivityManager & UsageStatsManager]
+        RRepo --> OS_PM[PackageManager]
+        SRepo --> APK_ZIP[Local Zip & Manifest Parser]
+        HRepo --> ROOM[(Room SQLite Database)]
+    end
 ```
-
-The Android application provides the user interface and device-level information, while the backend performs computationally intensive APK analysis and security evaluation where required.
 
 ---
 
@@ -129,38 +145,26 @@ The module can:
 - Refresh the process list.
 - Display basic process activity information.
 
-## Process Management
+## Process Management & Platform Constraints
 
-Where supported by the Android version and available privileges, the module can:
+The Process Manager operates within Android's modern platform security boundary:
 
-- Select a process/application.
-- Terminate supported processes.
-- Put supported applications into a sleep state.
-- Hibernate supported applications/processes.
-- Identify applications with persistent background activity.
-
-Operations requiring elevated privileges will only be available where the device configuration supports them.
+- Foreground app detection uses `UsageStatsManager` (requiring user authorization via `Settings.ACTION_USAGE_ACCESS_SETTINGS`).
+- Background and running processes are retrieved via `ActivityManager.runningAppProcesses`.
+- On Android 11 (API 30) and newer, historical process termination reasons (crashes, ANRs, memory pressure) are retrieved using `ActivityManager.getHistoricalProcessExitReasons`.
+- Note: Third-party apps on modern non-rooted Android cannot arbitrary terminate or hibernate other applications due to Linux UID sandboxing. Process management in APVM focuses on observability and diagnostics.
 
 ## Process Manager Flow
 
 ```mermaid
 flowchart TD
-    A[Process Manager] --> B[Get Running Apps]
-
-    B --> C[Process List]
-    C --> D[Process Details]
-
-    D --> E{Select Action}
-
-    E --> F[Refresh]
-    E --> G[Kill]
-    E --> H[Sleep]
-    E --> I[Hibernate]
-
-    F --> C
-    G --> J[Update Status]
-    H --> J
-    I --> J
+    A[Process Manager] --> B{Usage Access Granted?}
+    B -- No --> C[Prompt User to Open Settings]
+    B -- Yes --> D[Query Foreground Process]
+    D --> E[Query Running Background Processes]
+    E --> F[Query Recent Usage Events]
+    F --> G[Query Historical Exit Reasons]
+    G --> H[Display Live Diagnostic Cards]
 ```
 
 ---
@@ -802,56 +806,75 @@ SCAN_HISTORY
 
 # 17. Risk Scoring Model
 
-The risk engine combines multiple security indicators.
+APVM uses a deterministic, multi-vector weighted scoring model to compute security risks. Category scores range from 0 to 100, clamped at boundary conditions.
 
-A conceptual risk model is:
+### 17.1 Composite Score Formats
 
+**For Standalone APK Scans:**
 ```text
-Risk Score =
-    Permission Risk
-  + Vulnerability Risk
-  + Component Exposure Risk
-  + Severity Weight
+Overall Score = (Permission Risk × 0.30)
+              + (Vulnerability Risk × 0.35)
+              + (Component Exposure × 0.20)
+              + (Configuration Hardening × 0.15)
 ```
 
-For example:
-
+**For Installed Device Applications:**
 ```text
-Dangerous Permission
-        ↓
-Permission Risk
+Overall Score = (Permission Risk × 0.45)
+              + (Component Exposure × 0.35)
+              + (Configuration Hardening × 0.20)
+```
+*(Vulnerability risk is marked as unassessed / null for installed apps unless static DEX inspection has been executed).*
 
-Special Permission
-        ↓
-Permission Risk
+### 17.2 Severity Classification Thresholds
 
-Excessive Permission Combination
-        ↓
-Permission Risk
+All composite and category scores map directly to standardized severity levels:
 
-Exported Component
-        ↓
-Component Exposure Risk
+| Score Range | Severity Level | Visual Accent | Action Required |
+|---|---|---|---|
+| **0 – 29** | `LOW` | Vibrant Emerald (`#00E676`) | Baseline hygiene; minimal exposure. |
+| **30 – 59** | `MEDIUM` | Amber (`#FFD600`) | Review sensitive privileges and flags. |
+| **60 – 79** | `HIGH` | Neon Orange (`#FF9100`) | Attack surface exposure requiring hardening. |
+| **80 – 100** | `CRITICAL` | Vivid Crimson (`#FF1744`) | Severe exposure; immediate remediation needed. |
 
-Known Vulnerability
-        ↓
-Vulnerability Risk
+### 17.3 Device-Wide Security Posture
 
-High/Critical Finding
-        ↓
-Higher Severity Weight
+Device posture aggregates risk across installed applications:
+```text
+Posture Score = (Average App Score + (Critical Count × 4) + (High Count × 2)).coerceIn(0, 100)
 ```
 
-The resulting score can be mapped to an overall security level:
+### 17.4 Handling Unassessed Categories
 
-```text
-LOW
-MEDIUM
-HIGH
-CRITICAL
+In accordance with strict audit requirements, unassessed categories (e.g. historical records where individual subscores were not logged) are stored and rendered as `null` ("NOT ASSESSED" / "N/A"), never as false zero or artificial `LOW` risk.
+
+---
+
+# 18. Known Limitations & Scope Boundaries
+
+1. **Static Analysis Scope**: APK scanning inspects `AndroidManifest.xml` components, permissions, and flags, along with bytecode string indicators (WebView usage, `setJavaScriptEnabled`, `addJavascriptInterface`). Full decompilation (Smali/CFG) or taint analysis is outside the scope of on-device processing.
+2. **Behavioral Analysis**: APVM does not perform dynamic runtime sandboxing, kernel instrumentation, or memory hooking.
+3. **Malware Attribution**: Permission combinations and exported components represent technical attack surface and privilege capabilities. APVM explicitly avoids speculative malware claims (e.g., classifying a package installer as a "Trojan") without confirmed forensic evidence.
+4. **Process Control**: Modern Android sandboxing prohibits third-party applications from force-stopping other apps without root access. Process management provides non-invasive telemetry and historical exit diagnostics.
+
+---
+
+# 19. Verification & Unit Testing
+
+The test suite validates deterministic scoring, boundary condition clamping, permission combination rules, and history persistence:
+
+- `PermissionRiskEvaluatorTest`: Validates permission weights, package prefix normalization, combination detection, and boundary clamping.
+- `ComponentExposureEvaluatorTest`: Validates component exposure weighting, unprotected provider detection, and score bounds.
+- `ConfigurationRiskEvaluatorTest`: Validates debuggable flags, backup settings, cleartext traffic enforcement across SDK targets, and SDK obsoleteness penalties.
+- `VulnerabilityRiskEvaluatorTest`: Validates severity factor penalties (28/18/10/4) and clamping at 100.
+- `RiskAggregationTest`: Validates composite APK/Installed formulas, severity thresholds, and device posture aggregation.
+- `SecurityReportTest`: Validates report serialization, active caching, export generation, and metadata retention.
+- `ScanHistoryTest`: Validates Room entity type converters and database roundtrips.
+
+All 30 unit tests execute cleanly via Gradle:
+```powershell
+.\gradlew.bat testDebugUnitTest
 ```
-
-The scoring weights should be finalized during implementation and validated using controlled test APKs.
 
 ---
 

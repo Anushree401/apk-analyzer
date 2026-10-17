@@ -51,7 +51,8 @@ class ApkAnalyzer(
             versionCode = getVersionCode(packageInfo),
             minSdk = applicationInfo.minSdkVersion,
             targetSdk = applicationInfo.targetSdkVersion,
-            appName = applicationInfo.loadLabel(packageManager).toString()
+            appName = applicationInfo.loadLabel(packageManager).toString(),
+            requestedPermissions = packageInfo.requestedPermissions?.toList() ?: emptyList()
         )
 
         val findings = mutableListOf<VulnerabilityFinding>()
@@ -233,21 +234,24 @@ class ApkAnalyzer(
     ) {
 
         packageInfo.providers?.forEach { provider ->
+            val hasReadPerm = !provider.readPermission.isNullOrBlank()
+            val hasWritePerm = !provider.writePermission.isNullOrBlank()
 
-            if (
-                provider.exported &&
-                provider.readPermission.isNullOrBlank() &&
-                provider.writePermission.isNullOrBlank()
-            ) {
+            if (provider.exported && (!hasReadPerm || !hasWritePerm)) {
+                val missingPerms = when {
+                    !hasReadPerm && !hasWritePerm -> "neither read nor write permission protection"
+                    !hasReadPerm -> "no read permission protection"
+                    else -> "no write permission protection"
+                }
 
                 findings.add(
                     VulnerabilityFinding(
-                        name = "Exported Content Provider Without Permission",
+                        name = "Exported Content Provider Without Full Permission",
                         severity = RiskLevel.CRITICAL,
                         affectedComponent = provider.name,
-                        evidence = "Content provider is exported without read or write permission protection.",
+                        evidence = "Content provider is exported with $missingPerms.",
                         impact = "Other applications may potentially access or modify provider data.",
-                        recommendation = "Restrict provider access using appropriate read/write permissions or disable external exposure."
+                        recommendation = "Restrict provider access using appropriate permissions or disable external exposure."
                     )
                 )
             }
