@@ -151,64 +151,77 @@ fun ReportFindingCard(
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 14.dp)
-            ) {
-                // Evidence Section
-                if (finding.evidence.isNotBlank()) {
-                    ExplanationSection(
-                        label = "TECHNICAL EVIDENCE",
-                        labelColor = CyberCyan
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Surface, RoundedCornerShape(8.dp))
-                                .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
-                                .padding(10.dp)
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp)
+                ) {
+                    // Evidence Section
+                    if (finding.evidence.isNotBlank()) {
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+                        ExplanationSection(
+                            label = "TECHNICAL EVIDENCE (TAP TO COPY)",
+                            labelColor = CyberCyan
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Surface, RoundedCornerShape(8.dp))
+                                    .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        try {
+                                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            val clip = android.content.ClipData.newPlainText("Technical Evidence", finding.evidence)
+                                            clipboard.setPrimaryClip(clip)
+                                            android.widget.Toast.makeText(context, "Evidence copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                                        } catch (_: Exception) {}
+                                    }
+                                    .padding(10.dp)
+                            ) {
+                                Text(
+                                    text = finding.evidence,
+                                    color = PrimaryText,
+                                    fontSize = 12.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // Security Impact Section
+                    if (finding.impact.isNotBlank()) {
+                        ExplanationSection(
+                            label = "SECURITY IMPACT",
+                            labelColor = severityColor
                         ) {
                             Text(
-                                text = finding.evidence,
+                                text = finding.impact,
                                 color = PrimaryText,
-                                fontSize = 12.sp,
-                                fontFamily = FontFamily.Monospace,
-                                lineHeight = 16.sp
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
                             )
                         }
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
 
-                // Security Impact Section
-                if (finding.impact.isNotBlank()) {
-                    ExplanationSection(
-                        label = "SECURITY IMPACT",
-                        labelColor = severityColor
-                    ) {
-                        Text(
-                            text = finding.impact,
-                            color = PrimaryText,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Mitigation Recommendation Section
-                if (finding.recommendation.isNotBlank()) {
-                    ExplanationSection(
-                        label = "RECOMMENDED MITIGATION",
-                        labelColor = RiskLow
-                    ) {
-                        Text(
-                            text = finding.recommendation,
-                            color = PrimaryText,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
+                    // Mitigation Recommendation Section
+                    if (finding.recommendation.isNotBlank()) {
+                        ExplanationSection(
+                            label = "RECOMMENDED MITIGATION",
+                            labelColor = RiskLow
+                        ) {
+                            Text(
+                                text = finding.recommendation,
+                                color = PrimaryText,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
                     }
                 }
             }

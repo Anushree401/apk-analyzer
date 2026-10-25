@@ -1,6 +1,9 @@
 package com.example.android_manager.ui.report
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,10 +25,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,22 +45,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.android_manager.data.report.SecurityReportRepository
 import com.example.android_manager.model.RiskLevel
 import com.example.android_manager.model.SecurityReport
 import com.example.android_manager.navigation.Screen
 import com.example.android_manager.ui.components.APVMBottomBar
 import com.example.android_manager.ui.components.APVMTopBar
+import com.example.android_manager.ui.components.verticalScrollbar
 import com.example.android_manager.ui.theme.Background
 import com.example.android_manager.ui.theme.Border
 import com.example.android_manager.ui.theme.BorderSubtle
 import com.example.android_manager.ui.theme.CardBackground
 import com.example.android_manager.ui.theme.CyberCyan
+import com.example.android_manager.ui.theme.MutedText
 import com.example.android_manager.ui.theme.PrimaryText
 import com.example.android_manager.ui.theme.RiskLow
 import com.example.android_manager.ui.theme.SecondaryText
@@ -87,15 +101,54 @@ fun SecurityReportScreen(
     val context = LocalContext.current
     val repository = remember { SecurityReportRepository(context) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var report by remember { mutableStateOf<SecurityReport?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    var selectedTab by remember { mutableStateOf(ReportSectionTab.FINDINGS) }
-    var selectedSeverityFilter by remember { mutableStateOf<RiskLevel?>(null) }
+    var selectedTabName by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf(ReportSectionTab.FINDINGS.name)
+    }
+    val selectedTab = ReportSectionTab.valueOf(selectedTabName)
 
-    // Load active report from cache or synthesize from parameters
+    var selectedSeverityFilterName by androidx.compose.runtime.saveable.rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    val selectedSeverityFilter = selectedSeverityFilterName?.let { RiskLevel.valueOf(it) }
+
+    var showCalculationExplainer by remember { mutableStateOf(false) }
+    var exportContentToSave by remember { mutableStateOf<String?>(null) }
+    var exportMimeType by remember { mutableStateOf("text/markdown") }
+
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(exportMimeType)
+    ) { uri ->
+        if (uri != null && exportContentToSave != null) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(exportContentToSave!!.toByteArray())
+                    }
+                    withContext(Dispatchers.Main) {
+                        snackbarHostState.showSnackbar("Report exported successfully.")
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        snackbarHostState.showSnackbar("Export failed: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    BackHandler(enabled = selectedSeverityFilterName != null || selectedTab != ReportSectionTab.FINDINGS) {
+        if (selectedSeverityFilterName != null) {
+            selectedSeverityFilterName = null
+        } else if (selectedTab != ReportSectionTab.FINDINGS) {
+            selectedTabName = ReportSectionTab.FINDINGS.name
+        }
+    }
 
 
     LaunchedEffect(targetPackageName, historyId) {
@@ -135,68 +188,115 @@ fun SecurityReportScreen(
 
 
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Background)
-    ) {
-        APVMTopBar(onBack = onBack)
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = CyberCyan)
-            }
-        } else if (report != null) {
-            val currentReport = report!!
-
-            // Filter findings by selected severity chip
-            val filteredFindings = remember(currentReport, selectedSeverityFilter) {
-                if (selectedSeverityFilter == null) {
-                    currentReport.vulnerabilityFindings
-                } else {
-                    currentReport.vulnerabilityFindings.filter { it.severity == selectedSeverityFilter }
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = { APVMTopBar(onBack = onBack) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = CyberCyan)
                 }
-            }
+            } else if (report != null) {
+                val currentReport = report!!
 
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Target Metadata Header
-                item {
-                    ReportTargetHeader(
-                        report = currentReport,
-                        onShareClick = {
-                            val shareText = repository.formatReportForExport(currentReport)
-                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "APVM Security Audit Report - ${currentReport.metadata.appName}")
-                                putExtra(Intent.EXTRA_TEXT, shareText)
+                // Filter findings by selected severity chip
+                val filteredFindings = remember(currentReport, selectedSeverityFilter) {
+                    if (selectedSeverityFilter == null) {
+                        currentReport.vulnerabilityFindings
+                    } else {
+                        currentReport.vulnerabilityFindings.filter { it.severity == selectedSeverityFilter }
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // Target Metadata Header
+                    item {
+                        ReportTargetHeader(
+                            report = currentReport,
+                            onShareClick = {
+                                val shareText = repository.formatReportForExport(currentReport)
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_SUBJECT, "APVM Security Audit Report - ${currentReport.metadata.appName}")
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Export Security Audit Report"))
+                            },
+                            onExportMarkdown = {
+                                exportContentToSave = repository.formatReportForExport(currentReport)
+                                exportMimeType = "text/markdown"
+                                createDocumentLauncher.launch("apvm_report_${currentReport.metadata.packageName}.md")
+                            },
+                            onExportJson = {
+                                exportContentToSave = repository.formatReportAsJson(currentReport)
+                                exportMimeType = "application/json"
+                                createDocumentLauncher.launch("apvm_report_${currentReport.metadata.packageName}.json")
                             }
-                            context.startActivity(Intent.createChooser(sendIntent, "Export Security Audit Report"))
+                        )
+                    }
+
+                    // Executive Posture & Score Gauge Card
+                    item {
+                        ReportSummaryCard(
+                            summary = currentReport.summary,
+                            selectedSeverity = selectedSeverityFilter,
+                            onSeveritySelect = { selectedSeverityFilterName = it?.name }
+                        )
+                    }
+
+                    // How Scores Are Calculated Action
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(CardBackground)
+                                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                .clickable { showCalculationExplainer = true }
+                                .padding(vertical = 12.dp, horizontal = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = CyberCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    "HOW THREAT SCORES ARE CALCULATED ℹ",
+                                    color = CyberCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp
+                                )
+                            }
                         }
-                    )
-                }
+                    }
 
-                // Executive Posture & Score Gauge Card
-                item {
-                    ReportSummaryCard(
-                        summary = currentReport.summary,
-                        selectedSeverity = selectedSeverityFilter,
-                        onSeveritySelect = { selectedSeverityFilter = it }
-                    )
-                }
-
-                // Navigation Tabs
-                item {
+                    // Navigation Tabs
+                    item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -221,7 +321,7 @@ fun SecurityReportScreen(
                                         color = if (isSelected) CyberCyan else Border,
                                         shape = RoundedCornerShape(8.dp)
                                     )
-                                    .clickable { selectedTab = tab }
+                                    .clickable { selectedTabName = tab.name }
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Row(
@@ -291,7 +391,41 @@ fun SecurityReportScreen(
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CardBackground)
+                            .border(1.dp, Border, RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = SecondaryText,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                "HEURISTIC STATIC ANALYSIS DISCLAIMER",
+                                color = SecondaryText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "APVM static analysis heuristics provide defensive triage indicators and automated security risk estimates based on local manifest declarations and DEX bytecodes. They do not constitute formal commercial certification or dynamic execution analysis.",
+                            color = MutedText,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(30.dp))
                 }
             }
         } else {
@@ -311,10 +445,17 @@ fun SecurityReportScreen(
     }
 }
 
+    if (showCalculationExplainer) {
+        CalculationExplainerDialog(onDismiss = { showCalculationExplainer = false })
+    }
+}
+
 @Composable
 private fun ReportTargetHeader(
     report: SecurityReport,
-    onShareClick: () -> Unit
+    onShareClick: () -> Unit,
+    onExportMarkdown: () -> Unit,
+    onExportJson: () -> Unit
 ) {
     val meta = report.metadata
     val formattedDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(meta.scanTimestamp))
@@ -349,18 +490,37 @@ private fun ReportTargetHeader(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .background(CyberCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                        .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CyberCyan.copy(alpha = 0.12f))
+                        .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .clickable(onClick = onExportMarkdown)
+                        .padding(horizontal = 7.dp, vertical = 5.dp)
                 ) {
                     Text(
-                        text = meta.scanType.displayName.uppercase(),
+                        text = ".MD",
                         color = CyberCyan,
-                        fontSize = 9.sp,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CyberCyan.copy(alpha = 0.12f))
+                        .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .clickable(onClick = onExportJson)
+                        .padding(horizontal = 7.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = ".JSON",
+                        color = CyberCyan,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     )
@@ -368,11 +528,11 @@ private fun ReportTargetHeader(
 
                 IconButton(
                     onClick = onShareClick,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(34.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Share,
-                        contentDescription = "Export Report",
+                        contentDescription = "Share Report",
                         tint = CyberCyan,
                         modifier = Modifier.size(18.dp)
                     )
@@ -612,3 +772,169 @@ private fun RemediationRoadmapSection(report: SecurityReport) {
         }
     }
 }
+
+@Composable
+private fun CalculationExplainerDialog(onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxSize(0.85f)
+                .clip(RoundedCornerShape(18.dp))
+                .background(CardBackground)
+                .border(1.dp, Border, RoundedCornerShape(18.dp))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "RISK SCORING METHODOLOGY",
+                            color = CyberCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "How Scores Are Calculated",
+                            color = PrimaryText,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close dialog",
+                            tint = SecondaryText
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScrollbar(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            "APVM computes an overall threat score from 0 (Clean) to 100 (Critical) using a deterministic multi-dimensional heuristic evaluation formula:",
+                            color = SecondaryText,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+
+                    item {
+                        ScoreDimensionCard(
+                            dimension = "1. Dangerous Permission Vector",
+                            weight = "35% of total score",
+                            description = "Assesses granted sensitive permissions including SMS, Contacts, Location, Camera, Audio Recording, Storage, and special access rights (Accessibility, Overlay, Package Installation)."
+                        )
+                    }
+
+                    item {
+                        ScoreDimensionCard(
+                            dimension = "2. Component Attack Surface",
+                            weight = "25% of total score",
+                            description = "Evaluates exported Activities, Broadcast Receivers, Services, and Content Providers accessible to other applications without requiring system signature permissions."
+                        )
+                    }
+
+                    item {
+                        ScoreDimensionCard(
+                            dimension = "3. Hardcoded Secrets & Transport",
+                            weight = "20% of total score",
+                            description = "Scans DEX bytecode and network security configuration for plaintext HTTP traffic allowances, debuggable build flags, and leaked API credentials."
+                        )
+                    }
+
+                    item {
+                        ScoreDimensionCard(
+                            dimension = "4. Risky Capability Combos",
+                            weight = "15% of total score",
+                            description = "Detects synergistic threat patterns such as Camera + Audio (surveillance exfiltration), Audio + Location, or Package Installer + External Storage (Trojan dropper vector)."
+                        )
+                    }
+
+                    item {
+                        ScoreDimensionCard(
+                            dimension = "5. Target SDK Platform Recency",
+                            weight = "5% of total score",
+                            description = "Penalizes apps targeting legacy Android API levels that bypass modern runtime permission constraints and scoped storage protections."
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScoreDimensionCard(
+    dimension: String,
+    weight: String,
+    description: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(CardBackground)
+            .border(1.dp, Border, RoundedCornerShape(10.dp))
+            .padding(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = dimension,
+                color = PrimaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(CyberCyan.copy(alpha = 0.15f))
+                    .border(1.dp, CyberCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = weight,
+                    color = CyberCyan,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = description,
+            color = SecondaryText,
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+    }
+}

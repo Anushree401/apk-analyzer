@@ -11,13 +11,23 @@ import android.os.Process
 import com.example.android_manager.model.ProcessExitInfo
 import com.example.android_manager.model.ProcessInfo
 import com.example.android_manager.model.ProcessState
+import java.util.Locale
+
+data class DeviceMemoryInfo(
+    val totalMemBytes: Long,
+    val availMemBytes: Long,
+    val lowMemory: Boolean,
+    val thresholdBytes: Long
+) {
+    val usedMemBytes: Long get() = (totalMemBytes - availMemBytes).coerceAtLeast(0L)
+    val usedPercentage: Float get() = if (totalMemBytes > 0) usedMemBytes.toFloat() / totalMemBytes else 0f
+    val usedMemFormatted: String get() = String.format(Locale.US, "%.1f GB", usedMemBytes / (1024.0 * 1024.0 * 1024.0))
+    val totalMemFormatted: String get() = String.format(Locale.US, "%.1f GB", totalMemBytes / (1024.0 * 1024.0 * 1024.0))
+}
 
 /**
- * Reads application-usage events and the limited process information Android exposes.
- *
- * Important: runningAppProcesses is not a complete inventory of other apps on modern
- * Android. An empty result means no other processes were visible to this app, not
- * necessarily that no applications or services are running.
+ * Reads application-usage events, device memory metrics, and limited process telemetry.
+ * 100% on-device architecture with zero network dependency.
  */
 class ProcessRepository(
     private val context: Context
@@ -35,28 +45,37 @@ class ProcessRepository(
         ) == AppOpsManager.MODE_ALLOWED
     }
 
-    fun getCurrentForegroundApp(): ProcessInfo? {
-        if (!hasUsageAccess()) return null
-
-        val packageName = getLatestForegroundPackage() ?: return null
-        if (packageName == context.packageName) return null
-
-        return createProcessInfo(
-            packageName = packageName,
-            state = ProcessState.FOREGROUND,
-            lastActiveTime = getLatestForegroundTimestamp()
+    fun getDeviceMemoryInfo(): DeviceMemoryInfo {
+        val activityManager =
+            context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        return DeviceMemoryInfo(
+            totalMemBytes = memoryInfo.totalMem,
+            availMemBytes = memoryInfo.availMem,
+            lowMemory = memoryInfo.lowMemory,
+            thresholdBytes = memoryInfo.threshold
         )
     }
 
-    /**
-     * Returns only processes that Android makes visible through ActivityManager.
-     * This is deliberately not presented as a complete list of running apps.
-     */
+    fun getCurrentForegroundApp(): ProcessInfo? {
+        if (!hasUsageAccess()) return null
+
+        val event = getLatestForegroundEvent() ?: return null
+        if (event.first == context.packageName) return null
+
+        return createProcessInfo(
+            packageName = event.first,
+            state = ProcessState.FOREGROUND,
+            lastActiveTime = event.second
+        )
+    }
+
     fun getBackgroundProcesses(): List<ProcessInfo> {
         val activityManager =
             context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-        val currentForegroundPackage = getLatestForegroundPackage()
+        val currentForegroundPackage = getLatestForegroundEvent()?.first
         val runningProcesses = activityManager.runningAppProcesses ?: return emptyList()
 
         return runningProcesses
@@ -85,10 +104,6 @@ class ProcessRepository(
             .sortedBy { it.processName.lowercase(LocaleHolder.locale) }
     }
 
-    /**
-     * Uses Usage Access events. These are historical usage events, not proof that an
-     * app is still running at the time this method is called.
-     */
     fun getRecentlyActiveApps(): List<ProcessInfo> {
         if (!hasUsageAccess()) return emptyList()
 
@@ -98,16 +113,13 @@ class ProcessRepository(
         val endTime = System.currentTimeMillis()
         val startTime = endTime - RECENT_ACTIVITY_WINDOW_MS
         val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+
         val latestActivity = mutableMapOf<String, Long>()
         val event = UsageEvents.Event()
 
         while (usageEvents.hasNextEvent()) {
             usageEvents.getNextEvent(event)
-
-            if (
-                isForegroundEvent(event.eventType) &&
-                event.packageName != context.packageName
-            ) {
+            if (isForegroundEvent(event.eventType) && event.packageName != context.packageName) {
                 val previous = latestActivity[event.packageName] ?: 0L
                 if (event.timeStamp > previous) {
                     latestActivity[event.packageName] = event.timeStamp
@@ -115,10 +127,8 @@ class ProcessRepository(
             }
         }
 
-        val backgroundPackages = getBackgroundProcesses()
-            .map { it.packageName }
-            .toSet()
-        val currentForeground = getLatestForegroundPackage()
+        val backgroundPackages = getBackgroundProcesses().map { it.packageName }.toSet()
+        val currentForeground = getLatestForegroundEvent()?.first
 
         return latestActivity
             .filter { (packageName, _) ->
@@ -135,36 +145,29 @@ class ProcessRepository(
     }
 
     fun getProcessOverview(): List<ProcessInfo> {
-        return buildList {
-            getCurrentForegroundApp()?.let(::add)
-            addAll(getBackgroundProcesses())
-            addAll(getRecentlyActiveApps())
-        }.distinctBy { it.packageName }
+        val result = mutableListOf<ProcessInfo>()
+        val foreground = getCurrentForegroundApp()
+        if (foreground != null) {
+            result.add(foreground)
+        }
+        result.addAll(getBackgroundProcesses())
+        result.addAll(getRecentlyActiveApps())
+        return result.distinctBy { it.packageName }
     }
 
-    /**
-     * Count of visible process records only. This is not a device-wide process count.
-     */
     fun getRunningProcessCount(): Int {
         val activityManager =
             context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
 
-        return activityManager.runningAppProcesses
-            .orEmpty()
+        val processes = activityManager.runningAppProcesses ?: return 0
+
+        return processes
             .filter { process ->
                 process.pid != Process.myPid() &&
                         process.pkgList.none { it == context.packageName }
             }
             .distinctBy { it.pid }
             .size
-    }
-
-    private fun getLatestForegroundPackage(): String? {
-        return getLatestForegroundEvent()?.first
-    }
-
-    private fun getLatestForegroundTimestamp(): Long {
-        return getLatestForegroundEvent()?.second ?: 0L
     }
 
     private fun getLatestForegroundEvent(): Pair<String, Long>? {
@@ -200,7 +203,7 @@ class ProcessRepository(
     private fun createProcessInfo(
         packageName: String,
         state: ProcessState,
-        pid: Int = -1,
+        pid: Int = 0,
         importance: Int = 0,
         lastActiveTime: Long = 0L
     ): ProcessInfo? {
@@ -252,7 +255,7 @@ class ProcessRepository(
                     )
                 }
             } catch (_: Exception) {
-                // Some packages may not have visible exit history. Continue with others.
+                // Some system packages do not expose exit reasons. Continue.
             }
         }
 
@@ -280,7 +283,7 @@ class ProcessRepository(
     }
 
     private object LocaleHolder {
-        val locale: java.util.Locale = java.util.Locale.getDefault()
+        val locale: Locale = Locale.getDefault()
     }
 
     private companion object {

@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.android_manager"
-        minSdk = 26
-        targetSdk = 37
+        minSdk = 24
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -22,9 +22,13 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -50,7 +54,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.games.activity)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
     testImplementation(libs.junit)

@@ -13,19 +13,66 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.android_manager.ui.apps.AppsDirectoryScreen
 import com.example.android_manager.ui.components.APVMBottomBar
+import com.example.android_manager.ui.components.OnboardingDialog
 import com.example.android_manager.ui.dashboard.DashboardScreen
 import com.example.android_manager.ui.history.ScanHistoryScreen
 import com.example.android_manager.ui.permissions.PermissionAuditorScreen
 import com.example.android_manager.ui.process.ProcessManagerScreen
+import com.example.android_manager.ui.settings.SettingsScreen
+import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.android_manager.data.settings.SettingsRepository
 import com.example.android_manager.ui.report.SecurityReportScreen
 import com.example.android_manager.ui.risk.RiskAssessmentScreen
 import com.example.android_manager.ui.scanner.ApkScannerScreen
+import kotlinx.coroutines.launch
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    initialApkUri: Uri? = null
+) {
+    val context = LocalContext.current
+    val settingsRepository = remember { SettingsRepository(context) }
+    val appSettings by settingsRepository.settingsFlow.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
+    var showOnboardingManualTrigger by remember { mutableStateOf(false) }
+
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route.orEmpty()
+
+    val shouldShowOnboarding = (appSettings != null && !appSettings!!.onboardingCompleted) || showOnboardingManualTrigger
+
+    if (shouldShowOnboarding) {
+        OnboardingDialog(
+            onComplete = {
+                showOnboardingManualTrigger = false
+                scope.launch {
+                    settingsRepository.setOnboardingCompleted(true)
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(initialApkUri) {
+        if (initialApkUri != null) {
+            navController.navigate(Screen.ApkScanner.route) {
+                popUpTo(Screen.Dashboard.route) {
+                    saveState = true
+                }
+                launchSingleTop = true
+            }
+        }
+    }
 
     val currentScreen = when {
         route == Screen.Dashboard.route -> Screen.Dashboard
@@ -36,6 +83,7 @@ fun AppNavigation() {
         route == Screen.RiskAssessment.route -> Screen.RiskAssessment
         route.startsWith("security_report") -> Screen.SecurityReport
         route == Screen.ScanHistory.route -> Screen.ScanHistory
+        route == Screen.Settings.route -> Screen.Settings
         else -> Screen.Dashboard
     }
 
@@ -62,7 +110,11 @@ fun AppNavigation() {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            enterTransition = { fadeIn(animationSpec = tween(220)) },
+            exitTransition = { fadeOut(animationSpec = tween(200)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(220)) },
+            popExitTransition = { fadeOut(animationSpec = tween(200)) }
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
@@ -72,10 +124,19 @@ fun AppNavigation() {
                     onApkScanner = {
                         navigateToTab(Screen.ApkScanner)
                     },
+                    onAuditPermissions = {
+                        navController.navigate(Screen.PermissionAuditor.route)
+                    },
+                    onDevicePosture = {
+                        navController.navigate(Screen.RiskAssessment.route)
+                    },
                     onNavigateToReport = { historyId ->
                         navController.navigate(
                             Screen.SecurityReport.createRoute(historyId = historyId)
                         )
+                    },
+                    onSettings = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
@@ -111,6 +172,7 @@ fun AppNavigation() {
 
             composable(Screen.ApkScanner.route) {
                 ApkScannerScreen(
+                    initialUri = initialApkUri,
                     onBack = { navController.popBackStack() },
                     onNavigateToRiskAssessment = {
                         navController.navigate(Screen.RiskAssessment.route)
@@ -187,6 +249,13 @@ fun AppNavigation() {
                             Screen.SecurityReport.createRoute(historyId = historyId)
                         )
                     }
+                )
+            }
+
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onTriggerOnboarding = { showOnboardingManualTrigger = true }
                 )
             }
         }

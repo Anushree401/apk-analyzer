@@ -41,6 +41,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.android_manager.data.dashboard.DashboardRepository
+import com.example.android_manager.data.dashboard.DeviceSecurityPostureInfo
 import com.example.android_manager.ui.components.APVMTopBar
 import com.example.android_manager.ui.theme.Background
 import com.example.android_manager.ui.theme.Border
@@ -65,7 +66,10 @@ fun DashboardScreen(
     modifier: Modifier = Modifier,
     onApps: () -> Unit = {},
     onApkScanner: () -> Unit = {},
-    onNavigateToReport: (Long) -> Unit = {}
+    onAuditPermissions: () -> Unit = onApps,
+    onDevicePosture: () -> Unit = onApps,
+    onNavigateToReport: (Long) -> Unit = {},
+    onSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { DashboardRepository(context) }
@@ -79,6 +83,8 @@ fun DashboardScreen(
     var dangerousApps by remember { mutableStateOf<Int?>(null) }
     var vulnerabilityCount by remember { mutableStateOf<Int?>(null) }
     var recentScans by remember { mutableStateOf<List<ScanHistoryEntry>>(emptyList()) }
+    var devicePosture by remember { mutableStateOf<DeviceSecurityPostureInfo?>(null) }
+    var topRiskiestApps by remember { mutableStateOf<List<com.example.android_manager.data.permissions.AppPermissionInfo>>(emptyList()) }
 
     suspend fun loadDashboard(showRefreshIndicator: Boolean = false) {
         if (showRefreshIndicator) isRefreshing = true
@@ -92,6 +98,8 @@ fun DashboardScreen(
             dangerousApps = fresh.dangerousApps
             vulnerabilityCount = fresh.vulnerabilityCount
             recentScans = fresh.recentScans
+            devicePosture = fresh.devicePosture
+            topRiskiestApps = fresh.topRiskiestApps
         } finally {
             if (showRefreshIndicator) isRefreshing = false
         }
@@ -124,7 +132,9 @@ fun DashboardScreen(
             .fillMaxSize()
             .background(Background)
     ) {
-        APVMTopBar()
+        APVMTopBar(
+            onSettings = onSettings
+        )
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -268,6 +278,15 @@ fun DashboardScreen(
                 }
 
                 item {
+                    DevicePostureCard(
+                        posture = devicePosture,
+                        onAuditPermissions = onAuditPermissions,
+                        onApkScanner = onApkScanner,
+                        onDevicePosture = onDevicePosture
+                    )
+                }
+
+                item {
                     SectionTitle(
                         "Quick access",
                         "Choose a security tool"
@@ -296,6 +315,72 @@ fun DashboardScreen(
                     )
                 }
 
+                if (topRiskiestApps.isNotEmpty()) {
+                    item {
+                        SectionTitle(
+                            "Top riskiest applications",
+                            "Installed apps requesting multiple high-privilege capabilities"
+                        )
+                    }
+
+                    items(topRiskiestApps.size) { index ->
+                        val appInfo = topRiskiestApps[index]
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(CardBackground)
+                                .border(1.dp, Border, RoundedCornerShape(14.dp))
+                                .clickable { onAuditPermissions() }
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = appInfo.app.name,
+                                    color = PrimaryText,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "INSPECT ↗",
+                                    color = CyberCyan,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = appInfo.app.packageName,
+                                color = SecondaryText,
+                                fontSize = 11.sp
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (appInfo.dangerousPermissions.isNotEmpty()) {
+                                    Text(
+                                        text = "${appInfo.dangerousPermissions.size} Dangerous",
+                                        color = Color(0xFFFF9100),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                if (appInfo.specialPermissions.isNotEmpty()) {
+                                    Text(
+                                        text = "${appInfo.specialPermissions.size} Special",
+                                        color = CyberCyan,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
                 item {
                     SectionTitle(
@@ -525,3 +610,215 @@ private fun ActionCard(
         )
     }
 }
+
+@Composable
+private fun DevicePostureCard(
+    posture: DeviceSecurityPostureInfo?,
+    onAuditPermissions: () -> Unit,
+    onApkScanner: () -> Unit,
+    onDevicePosture: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground)
+            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .padding(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "DEVICE SECURITY POSTURE",
+                color = CyberCyan,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            if (posture != null) {
+                val allGood = !posture.isOsEol && !posture.isPatchOutdated && posture.isStorageEncrypted && !posture.isRooted && !posture.isInstallUnknownAppsAllowed
+                Text(
+                    text = if (allGood) "SYSTEM HEALTHY" else "ATTENTION NEEDED",
+                    color = if (allGood) CyberCyan else Color(0xFFFFB300),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        if (posture == null) {
+            Text(
+                "Evaluating platform integrity & patch level...",
+                color = MutedText,
+                fontSize = 12.sp
+            )
+        } else {
+            PostureItemRow(
+                label = "OS Platform",
+                value = "Android ${posture.androidVersion} (API ${posture.apiLevel})",
+                badgeText = if (posture.isOsEol) "EOL (NO PATCHES)" else "ACTIVE SUPPORT",
+                isWarning = posture.isOsEol
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            val patchDetail = if (posture.patchAgeDays != null) {
+                "${posture.securityPatch} (${posture.patchAgeDays}d old)"
+            } else {
+                posture.securityPatch
+            }
+            PostureItemRow(
+                label = "Security Patch",
+                value = patchDetail,
+                badgeText = if (posture.isPatchOutdated) "OUTDATED (>90D)" else "UP TO DATE",
+                isWarning = posture.isPatchOutdated
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            PostureItemRow(
+                label = "Encryption",
+                value = posture.encryptionStatusLabel,
+                badgeText = if (posture.isStorageEncrypted) "ENCRYPTED" else "UNENCRYPTED",
+                isWarning = !posture.isStorageEncrypted
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            val rootLabel = if (posture.isRooted) "ROOTED" else "NOT ROOTED"
+            val adbLabel = if (posture.isAdbEnabled) "ADB ON" else "ADB OFF"
+            PostureItemRow(
+                label = "Integrity & ADB",
+                value = "$rootLabel · $adbLabel",
+                badgeText = if (posture.isRooted) "COMPROMISED" else if (posture.isAdbEnabled) "DEV MODE" else "SECURE",
+                isWarning = posture.isRooted || posture.isAdbEnabled
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            PostureItemRow(
+                label = "Unknown Sources",
+                value = if (posture.isInstallUnknownAppsAllowed) "Sideloading Allowed" else "Blocked / Restricted",
+                badgeText = if (posture.isInstallUnknownAppsAllowed) "WARNING" else "PROTECTED",
+                isWarning = posture.isInstallUnknownAppsAllowed
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable(onClick = onAuditPermissions)
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "AUDIT APPS",
+                        color = CyberCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable(onClick = onApkScanner)
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "SCAN APK",
+                        color = CyberCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable(onClick = onDevicePosture)
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "POSTURE MATRIX",
+                        color = PrimaryText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PostureItemRow(
+    label: String,
+    value: String,
+    badgeText: String,
+    isWarning: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                label.uppercase(),
+                color = SecondaryText,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                value,
+                color = PrimaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (isWarning) Color(0x22FFB300) else Color(0x1A00E5FF))
+                .border(
+                    1.dp,
+                    if (isWarning) Color(0xFFFFB300) else CyberCyan.copy(alpha = 0.5f),
+                    RoundedCornerShape(6.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                badgeText,
+                color = if (isWarning) Color(0xFFFFB300) else CyberCyan,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+

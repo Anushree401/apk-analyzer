@@ -24,4 +24,5 @@ sealed class Screen(val route: String) {
     }
 
     data object ScanHistory : Screen("scan_history")
+    data object Settings : Screen("settings")
 }

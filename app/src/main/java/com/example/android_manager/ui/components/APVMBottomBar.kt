@@ -4,8 +4,10 @@ package com.example.android_manager.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -73,7 +75,7 @@ fun APVMBottomBar(
             selected = currentScreen == Screen.ScanHistory,
             onClick = { onNavigate(Screen.ScanHistory) }
         )
-    }
+}
 }
 
 @Composable
@@ -82,18 +84,23 @@ private fun BottomNavItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Text(
-        text = label,
-        color = if (selected) NavSelected else NavUnselected,
-        fontSize = 11.sp,
-        fontWeight = if (selected) {
-            FontWeight.SemiBold
-        } else {
-            FontWeight.Normal
-        },
+    Box(
         modifier = Modifier
+            .defaultMinSize(minWidth = 52.dp, minHeight = 48.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 9.dp)
-    )
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (selected) NavSelected else NavUnselected,
+            fontSize = 11.sp,
+            fontWeight = if (selected) {
+                FontWeight.SemiBold
+            } else {
+                FontWeight.Normal
+            }
+        )
+    }
 }

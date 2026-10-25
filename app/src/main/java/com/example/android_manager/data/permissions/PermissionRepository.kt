@@ -9,7 +9,8 @@ import com.example.android_manager.model.AppInfo
 data class PermissionEntry(
     val name: String,
     val description: String,
-    val category: String
+    val category: String,
+    val explanation: PermissionExplanation = PermissionExplanations.getExplanation(name)
 )
 
 data class AppPermissionInfo(
@@ -95,7 +96,8 @@ class PermissionRepository(
         return PermissionEntry(
             name = permissionName.substringAfterLast("."),
             description = description,
-            category = category
+            category = category,
+            explanation = PermissionExplanations.getExplanation(permissionName)
         )
     }
 

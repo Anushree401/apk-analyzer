@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- Shield Base -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M64,12L24,28V62C24,88.4 41,112.6 64,120C87,112.6 104,88.4 104,62V28L64,12Z"
+        android:fillAlpha="0.18" />
+
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M64,12L24,28V62C24,88.4 41,112.6 64,120C87,112.6 104,88.4 104,62V28L64,12Z" />
+
+    <!-- Center Security Pulse / Lock Symbol -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M52,60V48C52,41.4 57.4,36 64,36C70.6,36 76,41.4 76,48V60" />
+
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M48,60H80C82.2,60 84,61.8 84,64V88C84,90.2 82.2,92 80,92H48C45.8,92 44,90.2 44,88V64C44,61.8 45.8,60 48,60Z" />
+
+    <path
+        android:fillColor="#0A0D14"
+        android:pathData="M64,72C65.7,72 67,73.3 67,75C67,76.3 66.1,77.4 65,77.8V82H63V77.8C61.9,77.4 61,76.3 61,75C61,73.3 62.3,72 64,72Z" />
+
+</vector>

@@ -35,9 +35,18 @@ private val APVMColorScheme = darkColorScheme(
 fun Android_ManagerTheme(
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
+    amoled: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = APVMColorScheme
+    val colorScheme = if (amoled) {
+        APVMColorScheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceVariant = Color(0xFF0A0A0A)
+        )
+    } else {
+        APVMColorScheme
+    }
 
     val view = LocalView.current
 

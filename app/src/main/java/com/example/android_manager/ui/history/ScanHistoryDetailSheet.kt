@@ -2,7 +2,9 @@ package com.example.android_manager.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,6 +61,8 @@ fun ScanHistoryDetailSheet(
     entry: ScanHistoryEntry,
     onDismiss: () -> Unit,
     onViewFullReport: ((Long) -> Unit)? = null,
+    onCompare: ((ScanHistoryEntry) -> Unit)? = null,
+    onTimeline: ((String) -> Unit)? = null,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val riskColor = entry.riskLevel.color()
@@ -207,6 +211,56 @@ fun ScanHistoryDetailSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("VIEW COMPLETE SECURITY REPORT")
+                }
+            }
+
+            if (onCompare != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardBackground)
+                        .border(1.dp, CyberCyan.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .clickable {
+                            onDismiss()
+                            onCompare(entry)
+                        }
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "COMPARE WITH ANOTHER SCAN ⇄",
+                        color = CyberCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
+                }
+            }
+
+            if (onTimeline != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardBackground)
+                        .border(1.dp, Border, RoundedCornerShape(8.dp))
+                        .clickable {
+                            onDismiss()
+                            onTimeline(entry.packageName)
+                        }
+                        .padding(vertical = 11.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "VIEW PACKAGE SCAN TIMELINE ⏱",
+                        color = PrimaryText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
                 }
             }
 

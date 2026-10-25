@@ -716,4 +716,16 @@ class SecurityReportRepository(
 
         return sb.toString()
     }
+
+    /**
+     * Serializes the security report into pretty-printed structured JSON format.
+     */
+    fun formatReportAsJson(report: SecurityReport): String {
+        return com.google.gson.GsonBuilder()
+            .setPrettyPrinting()
+            .serializeNulls()
+            .create()
+            .toJson(report)
+    }
 }
+
