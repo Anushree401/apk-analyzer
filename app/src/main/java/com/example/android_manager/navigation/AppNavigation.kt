@@ -50,7 +50,7 @@ fun AppNavigation(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route.orEmpty()
 
-    val shouldShowOnboarding = (appSettings != null && !appSettings!!.onboardingCompleted) || showOnboardingManualTrigger
+    val shouldShowOnboarding = (appSettings?.onboardingCompleted == false) || showOnboardingManualTrigger
 
     if (shouldShowOnboarding) {
         OnboardingDialog(

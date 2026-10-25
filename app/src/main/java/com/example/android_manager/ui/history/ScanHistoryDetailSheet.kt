@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -312,7 +313,10 @@ fun ScanHistoryDetailSheet(
                         .height(300.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(entry.findings) { finding ->
+                    itemsIndexed(
+                        items = entry.findings,
+                        key = { index, finding -> "${finding.name}_${finding.affectedComponent}_${finding.severity.name}_$index" }
+                    ) { _, finding ->
                         ApkFindingCard(finding = finding)
                     }
                 }

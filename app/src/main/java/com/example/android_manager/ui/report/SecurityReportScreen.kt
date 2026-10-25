@@ -212,7 +212,7 @@ fun SecurityReportScreen(
                     CircularProgressIndicator(color = CyberCyan)
                 }
             } else if (report != null) {
-                val currentReport = report!!
+                val currentReport = report ?: return@Column
 
                 // Filter findings by selected severity chip
                 val filteredFindings = remember(currentReport, selectedSeverityFilter) {
