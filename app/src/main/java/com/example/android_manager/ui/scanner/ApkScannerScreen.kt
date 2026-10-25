@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -587,10 +588,10 @@ fun ApkScannerScreen(
                             )
                         }
 
-                        items(
+                        itemsIndexed(
                             items = result.findings,
-                            key = { "${it.name}:${it.affectedComponent}" }
-                        ) { finding ->
+                            key = { index, finding -> "${finding.name}:${finding.affectedComponent}:$index" }
+                        ) { _, finding ->
                             ApkFindingCard(finding = finding)
                         }
                     }
@@ -795,10 +796,10 @@ private fun InstalledAppPickerDialog(
                             .verticalScrollbar(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(
+                        itemsIndexed(
                             items = filteredApps,
-                            key = { it.packageName }
-                        ) { app ->
+                            key = { index, app -> "${app.packageName}_$index" }
+                        ) { _, app ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

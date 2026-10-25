@@ -153,8 +153,8 @@ private fun SubscoreItem(
                 )
 
                 Text(
-                    text = if (assessed) {
-                        level!!.name
+                    text = if (assessed && level != null) {
+                        level.name
                     } else {
                         "NOT ASSESSED"
                     },

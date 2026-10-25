@@ -97,13 +97,15 @@ fun AppNavigation(
             else -> screen.route
         }
 
-        navController.navigate(destination) {
-            popUpTo(Screen.Dashboard.route) {
-                saveState = true
+        try {
+            navController.navigate(destination) {
+                popUpTo(Screen.Dashboard.route) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
             }
-            launchSingleTop = true
-            restoreState = true
-        }
+        } catch (_: Exception) {}
     }
 
     Column(modifier = Modifier.fillMaxSize()) {

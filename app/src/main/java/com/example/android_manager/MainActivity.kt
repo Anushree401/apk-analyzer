@@ -10,7 +10,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.example.android_manager.data.settings.SettingsRepository
 import com.example.android_manager.navigation.AppNavigation
 import com.example.android_manager.ui.theme.Android_ManagerTheme
@@ -18,7 +20,7 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
 
-    private var incomingApkUri: Uri? = null
+    private var incomingApkUri by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install modern AndroidX splash screen before super.onCreate

@@ -160,7 +160,10 @@ fun PerAppHistoryDialog(
                         .verticalScrollbar(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    itemsIndexed(scans, key = { _, item -> item.id }) { index, scan ->
+                    itemsIndexed(
+                        items = scans,
+                        key = { index, item -> "${item.id}_${item.timestamp}_$index" }
+                    ) { index, scan ->
                         val olderScan = if (index < scans.size - 1) scans[index + 1] else null
 
                         Column(

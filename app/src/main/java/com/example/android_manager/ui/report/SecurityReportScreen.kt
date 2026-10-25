@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -128,7 +129,9 @@ fun SecurityReportScreen(
             scope.launch(Dispatchers.IO) {
                 try {
                     context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        stream.write(exportContentToSave!!.toByteArray())
+                        exportContentToSave?.let { content ->
+                            stream.write(content.toByteArray())
+                        }
                     }
                     withContext(Dispatchers.Main) {
                         snackbarHostState.showSnackbar("Report exported successfully.")
@@ -232,13 +235,19 @@ fun SecurityReportScreen(
                         ReportTargetHeader(
                             report = currentReport,
                             onShareClick = {
-                                val shareText = repository.formatReportForExport(currentReport)
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_SUBJECT, "APVM Security Audit Report - ${currentReport.metadata.appName}")
-                                    putExtra(Intent.EXTRA_TEXT, shareText)
-                                }
-                                context.startActivity(Intent.createChooser(sendIntent, "Export Security Audit Report"))
+                                try {
+                                    val shareText = repository.formatReportForExport(currentReport)
+                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "APVM Security Audit Report - ${currentReport.metadata.appName}")
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    val chooser = Intent.createChooser(sendIntent, "Export Security Audit Report").apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(chooser)
+                                } catch (_: Exception) {}
                             },
                             onExportMarkdown = {
                                 exportContentToSave = repository.formatReportForExport(currentReport)
@@ -365,7 +374,10 @@ fun SecurityReportScreen(
                                 CleanFindingsState()
                             }
                         } else {
-                            items(filteredFindings, key = { "${it.name}_${it.affectedComponent}" }) { finding ->
+                            itemsIndexed(
+                                items = filteredFindings,
+                                key = { index, finding -> "${finding.name}_${finding.affectedComponent}_${finding.severity.name}_$index" }
+                            ) { _, finding ->
                                 ReportFindingCard(finding = finding)
                             }
                         }

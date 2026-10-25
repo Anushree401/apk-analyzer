@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -279,7 +280,10 @@ fun ScanHistoryScreen(
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    items(filteredEntries, key = { it.id }) { entry ->
+                                    itemsIndexed(
+                                        items = filteredEntries,
+                                        key = { index, entry -> "${entry.id}_${entry.timestamp}_$index" }
+                                    ) { _, entry ->
                                         Box(modifier = Modifier.animateItem()) {
                                             ScanHistoryCard(
                                                 entry = entry,
@@ -448,7 +452,10 @@ fun ScanHistoryScreen(
                                 .verticalScrollbar(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(candidateEntries, key = { it.id }) { other ->
+                            itemsIndexed(
+                                items = candidateEntries,
+                                key = { index, other -> "${other.id}_${other.timestamp}_$index" }
+                            ) { _, other ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()

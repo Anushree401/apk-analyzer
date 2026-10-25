@@ -402,12 +402,18 @@ fun SettingsScreen(
                 }
             },
             onShare = {
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "APVM Crash Diagnostic Dump")
-                    putExtra(Intent.EXTRA_TEXT, crashLogText)
-                }
-                context.startActivity(Intent.createChooser(shareIntent, "Share APVM Crash Dump"))
+                try {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "APVM Crash Diagnostic Dump")
+                        putExtra(Intent.EXTRA_TEXT, crashLogText)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    val chooser = Intent.createChooser(shareIntent, "Share APVM Crash Dump").apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(chooser)
+                } catch (_: Exception) {}
             }
         )
     }

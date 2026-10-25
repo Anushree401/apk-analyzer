@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -693,10 +694,10 @@ fun PermissionAuditorScreen(
                                 )
                             }
                         } else {
-                            items(
+                            itemsIndexed(
                                 items = sortedApps,
-                                key = { it.app.packageName }
-                            ) { appInfo ->
+                                key = { index, appInfo -> "${appInfo.app.packageName}_$index" }
+                            ) { _, appInfo ->
                                 PermissionAppCard(
                                     appInfo = appInfo,
                                     modifier = Modifier.animateItem()
@@ -1118,7 +1119,10 @@ private fun PermissionAppCard(
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(appInfo.app.packageName)
                 if (launchIntent != null) {
                     AuditorActionButton(label = "OPEN") {
-                        try { context.startActivity(launchIntent) } catch (_: Exception) {}
+                        try {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(launchIntent)
+                        } catch (_: Exception) {}
                     }
                 }
 
@@ -1126,6 +1130,7 @@ private fun PermissionAppCard(
                     try {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                             data = Uri.parse("package:${appInfo.app.packageName}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(intent)
                     } catch (_: Exception) {}
@@ -1144,11 +1149,14 @@ private fun PermissionAppCard(
                     try {
                         val playIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${appInfo.app.packageName}")).apply {
                             setPackage("com.android.vending")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
                         context.startActivity(playIntent)
                     } catch (_: Exception) {
                         try {
-                            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${appInfo.app.packageName}"))
+                            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${appInfo.app.packageName}")).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
                             context.startActivity(webIntent)
                         } catch (_: Exception) {}
                     }
@@ -1159,6 +1167,7 @@ private fun PermissionAppCard(
                         try {
                             val intent = Intent(Intent.ACTION_DELETE).apply {
                                 data = Uri.parse("package:${appInfo.app.packageName}")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             }
                             context.startActivity(intent)
                         } catch (_: Exception) {}
@@ -1171,8 +1180,12 @@ private fun PermissionAppCard(
                             type = "text/plain"
                             putExtra(Intent.EXTRA_SUBJECT, "App: ${appInfo.app.name}")
                             putExtra(Intent.EXTRA_TEXT, "Package: ${appInfo.app.packageName}\nVersion: ${appInfo.app.versionName ?: "N/A"}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "Share App"))
+                        val chooser = Intent.createChooser(sendIntent, "Share App").apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(chooser)
                     } catch (_: Exception) {}
                 }
 
@@ -1181,7 +1194,9 @@ private fun PermissionAppCard(
                     val rawHash = certSha256.replace(":", "").lowercase()
                     AuditorActionButton(label = "VIRUSTOTAL ↗") {
                         try {
-                            val vtIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.virustotal.com/gui/file/$rawHash"))
+                            val vtIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.virustotal.com/gui/file/$rawHash")).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
                             context.startActivity(vtIntent)
                         } catch (_: Exception) {}
                     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -245,7 +246,10 @@ fun AppSelectionBottomSheet(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredApps, key = { it.packageName }) { app ->
+                itemsIndexed(
+                    items = filteredApps,
+                    key = { index, app -> "${app.packageName}_$index" }
+                ) { _, app ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

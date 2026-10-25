@@ -324,8 +324,8 @@ fun DashboardScreen(
                     }
 
                     items(topRiskiestApps.size) { index ->
-                        val appInfo = topRiskiestApps[index]
-                        Column(
+                        topRiskiestApps.getOrNull(index)?.let { appInfo ->
+                            Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
@@ -379,6 +379,7 @@ fun DashboardScreen(
                                 }
                             }
                         }
+                        }
                     }
                 }
 
@@ -418,9 +419,8 @@ fun DashboardScreen(
                     }
                 } else {
                     items(recentScans.size) { index ->
-                        val scan = recentScans[index]
-
-                        Column(
+                        recentScans.getOrNull(index)?.let { scan ->
+                            Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
@@ -467,6 +467,7 @@ fun DashboardScreen(
                                 color = SecondaryText,
                                 fontSize = 11.sp
                             )
+                        }
                         }
                     }
                 }

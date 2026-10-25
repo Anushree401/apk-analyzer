@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -426,7 +427,19 @@ fun ProcessManagerScreen(
                                 Spacer(Modifier.height(14.dp))
                                 Button(
                                     onClick = {
-                                        context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                        try {
+                                            val usageIntent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(usageIntent)
+                                        } catch (_: Exception) {
+                                            try {
+                                                val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                                }
+                                                context.startActivity(settingsIntent)
+                                            } catch (_: Exception) {}
+                                        }
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Graphite)
                                 ) {
@@ -545,10 +558,10 @@ fun ProcessManagerScreen(
                                     }
                                 }
                             } else {
-                                items(
-                                    filteredBackground,
-                                    key = { "${it.packageName}_${it.pid}" }
-                                ) { process ->
+                                itemsIndexed(
+                                    items = filteredBackground,
+                                    key = { index, process -> "${process.packageName}_${process.pid}_$index" }
+                                ) { _, process ->
                                     BackgroundProcessCard(
                                         process = process,
                                         onSettingsClick = { openAppSettings(context, process.packageName) },
@@ -576,10 +589,10 @@ fun ProcessManagerScreen(
                                     )
                                 }
                             } else {
-                                items(
-                                    filteredRecent,
-                                    key = { "${it.packageName}_${it.lastActiveTime}" }
-                                ) { app ->
+                                itemsIndexed(
+                                    items = filteredRecent,
+                                    key = { index, app -> "${app.packageName}_${app.lastActiveTime}_$index" }
+                                ) { _, app ->
                                     RecentlyActiveCard(
                                         process = app,
                                         onSettingsClick = { openAppSettings(context, app.packageName) },
@@ -602,10 +615,10 @@ fun ProcessManagerScreen(
                                 )
                             }
                         } else {
-                            items(
-                                filteredExits,
-                                key = { "${it.packageName}_${it.timestamp}" }
-                            ) { event ->
+                            itemsIndexed(
+                                items = filteredExits,
+                                key = { index, event -> "${event.packageName}_${event.timestamp}_$index" }
+                            ) { _, event ->
                                 ProcessEventCard(
                                     event = event,
                                     modifier = Modifier.animateItem()
@@ -734,11 +747,17 @@ private fun openAppSettings(
         val intent = Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             "package:$packageName".toUri()
-        )
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         context.startActivity(intent)
     } catch (_: Exception) {
-        // Fallback to generic settings
-        context.startActivity(Intent(Settings.ACTION_SETTINGS))
+        try {
+            val fallback = Intent(Settings.ACTION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(fallback)
+        } catch (_: Exception) {}
     }
 }
 
